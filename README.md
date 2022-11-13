@@ -1,5 +1,5 @@
 # Image-Tagger
-A super simple image viewer with the ability to tag images, search by tags, and mark clipping regions for AI training purposes
+A super simple image viewer with the ability to tag images on a desktop pc, search by tags, and mark clipping regions for AI training purposes
 
 ![preview image](ImageTagger_v1.png)
 
@@ -19,6 +19,6 @@ Not Implemented:
 * Tagging
 * Searching Tags
 * AI Data Clipping Regions
-* Saving/Loading the database
+* Saving/Loading the database of image locations, image tags, and image training regions
 * Removing images from the current batch
 * WebP support, GIF playback
