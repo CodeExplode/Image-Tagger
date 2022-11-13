@@ -49,14 +49,15 @@ namespace ImageTagger
 
         private void form_Load(object sender, EventArgs e)
         {
-            SetBatchMode(false);
-
             database = new ImageTaggerDatabase();
-            database.Load();
+            database.Load(false);
 
             gallery = new Gallery(database);
 
+            SetBatchMode(false);
             ClearFocus();
+
+            txtDatabase.Text = database.databaseLocation;
 
             cmbInterpolationModes.DataSource = new BindingList<InterpolationMode>() {
                 InterpolationMode.NearestNeighbor,
@@ -71,7 +72,7 @@ namespace ImageTagger
 
             timerFilterCooldown = new Timer();
             timerFilterCooldown.Tick += new System.EventHandler(this.timerFilterCooldown_Tick);
-            timerFilterCooldown.Interval = 1500;
+            timerFilterCooldown.Interval = 1000;
         }
 
 
@@ -145,14 +146,13 @@ namespace ImageTagger
             {
                 this.Text = "Image Tagger";
                 txtTags.Text = "";
-                // TODO clear training area values (maybe even hide tags and training area)
+                gridTrainingSources.Rows.Clear();
             }
             else
             {
-                Image image = gallery.CurrentImageData();
-                this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({image.Size.Width}x{image.Size.Height})";
-                // TODO fill in training area values
-
+                //Image imageData = gallery.CurrentImageData();
+                this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({imageData.Size.Width}x{imageData.Size.Height})";
+                TrainingData_Populate();
                 if (!chkBatchTag.Checked)
                     DisplayTags();
             }
@@ -310,26 +310,34 @@ namespace ImageTagger
 
         #region INPUTS
 
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        private bool UIInputFocused()
         {
             Control focusedControl = Util.FindFocusedControl(this);
-            bool onTextBox = (focusedControl is TextBox || focusedControl is RichTextBox) ;
+            return (focusedControl is TextBox || focusedControl is RichTextBox || focusedControl is DataGridView);
+        }
 
-            if (!onTextBox && (keyData == Keys.Left || keyData == Keys.Right))
-            {
-                ScrollGallery(keyData == Keys.Right);
-                return true;
-            }
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            bool inputFocused = UIInputFocused();
 
-            if (!onTextBox && keyData == Keys.Space)
+            if (!inputFocused)
             {
-                ToggleSlideshow();
-            }
+                if (keyData == Keys.Left || keyData == Keys.Right)
+                {
+                    ScrollGallery(keyData == Keys.Right);
+                    return true;
+                }
 
-            // should really have a flag for in slideshow rather than check this way
-            if (!onTextBox && keyData == Keys.Escape && this.FormBorderStyle == FormBorderStyle.None)
-            {
-                ToggleSlideshow();
+                if (keyData == Keys.Space)
+                {
+                    ToggleSlideshow();
+                }
+
+                // should really have a flag for in slideshow rather than check this way
+                if (keyData == Keys.Escape && this.FormBorderStyle == FormBorderStyle.None)
+                {
+                    ToggleSlideshow();
+                }
             }
 
             return base.ProcessCmdKey(ref msg, keyData); // https://stackoverflow.com/a/34168026
@@ -429,6 +437,17 @@ namespace ImageTagger
                 this.BackColor = clrDialog.Color;
         }
 
+        private void btnLoadDatabase_Click(object sender, EventArgs e)
+        {
+            database.databaseLocation = txtDatabase.Text;
+            database.Load(true);
+        }
+
+        private void btnSaveDatabase_Click(object sender, EventArgs e)
+        {
+            database.Save();
+        }
+
         #endregion
 
 
@@ -436,11 +455,14 @@ namespace ImageTagger
 
         private void SetBatchMode(bool inBatchMode)
         {
+            if (this.inBatchMode && !inBatchMode)
+                txtFilter.Text = ""; // clear filter whenever exit batch mode, as is often a previous filter string
+
             this.inBatchMode = inBatchMode;
             pnlResizableFilter.Visible = !inBatchMode;
             pnlBatch.Visible = inBatchMode;
             //chkBatchTag.Checked = inBatchMode;
-            
+
             if (inBatchMode)
                 chkBatchTag.Text = $"Batch Tag ({gallery.images.Count})";
         }
@@ -496,10 +518,10 @@ namespace ImageTagger
             foreach (string tagWord in tagWords)
                 database.EnsureTagExists(tagWord);
 
-            foreach (KeyValuePair<string, List<TaggedImage>> tagDetails in database.tags)
+            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in database.tags)
             {
-                List<TaggedImage> imagesForTag = tagDetails.Value;
-                bool validTag = tagWords.Contains(tagDetails.Key);
+                List<TaggedImage> imagesForTag = tagImages.Value;
+                bool validTag = tagWords.Contains(tagImages.Key);
 
                 if (chkBatchTag.Checked)
                 {
@@ -545,7 +567,7 @@ namespace ImageTagger
             timerFilterCooldown.Enabled = false;
 
             List<string> tagWords = Util.ParseTagText(txtFilter.Text);
-            List<TaggedImage> newGallery = database.GetImagesWithTags(tagWords, true);
+            List<TaggedImage> newGallery = database.GetFilteredImages(tagWords, true);
 
             AddToGallery(newGallery, true, false);
         }
@@ -553,80 +575,101 @@ namespace ImageTagger
         #endregion
 
 
-        #region TRAINING AREAS
+        #region TRAINING DATA
+
+        private void TrainingData_Validate(TaggedImage image, Image imageData)
+        {
+            // aren't reading images when first loaded into the database (too slow), and so instead populate initial values when need them
+            if (image.selections.Length == 0)
+            {
+                Image currentImageData = gallery.CurrentImageData();
+
+                int imgW = currentImageData.Width;
+                int imgH = currentImageData.Height;
+
+                int square_size = Math.Min(imgW, imgH);
+                int x = (square_size == imgW) ? 0 : Math.Max(0, imgW / 2 - square_size / 2);
+                int y = (square_size == imgH) ? 0 : Math.Max(0, imgH / 2 - square_size / 2);
+
+                image.selections = new int[] { x, y, square_size, square_size };
+            }
+        }
 
         private void lblTrainingData_Click(object sender, EventArgs e)
         {
-            chkTrainingFull.Visible = !chkTrainingFull.Visible;
-            lblTrainingData.Text = "Training Area " + (chkTrainingFull.Visible ? "⏶" : "⏷");
-            UpdateTrainingBoundsVisibility();
+            pnlResizableTrainingBounds.Visible = !pnlResizableTrainingBounds.Visible;
+            lblTrainingData.Text = "Training Sources " + (pnlResizableTrainingBounds.Visible ? "⏶" : "⏷");
         }
 
-        private void chkTrainingFull_CheckedChanged(object sender, EventArgs e)
+        private void TrainingData_Populate()
         {
-            UpdateTrainingBoundsVisibility();
-        }
+            TaggedImage currentImage = gallery.CurrentImage();
+            TrainingData_Validate(currentImage, gallery.CurrentImageData());
 
-        private void UpdateTrainingBoundsVisibility()
-        {
-            pnlResizableTrainingBounds.Visible = !chkTrainingFull.Checked;
-            //chkTrainingFull.Text = (chkTrainingFull.Checked ? "Full Image" : "Selections");
-        }
+            int[] selections = currentImage.selections;
+            
+            gridTrainingSources.Rows.Clear();
 
-        private void txtTrainingBounds_TextChanged(object sender, EventArgs e)
-        {
-            ParseTrainingBounds(true);
-        }
-
-        private void ParseTrainingBounds(bool userEdit)
-        {
-            if (userEdit)
+            for (int i = 0; i < selections.Length; i += 4)
             {
-                // TODO clear current image bounds
+                DataGridViewRow row = new DataGridViewRow();
+                row.CreateCells(gridTrainingSources);
+                row.Cells[0].Value = selections[i];
+                row.Cells[1].Value = selections[i + 1];
+                row.Cells[2].Value = selections[i + 2];
+                row.Cells[3].Value = selections[i + 3];
+                gridTrainingSources.Rows.Add(row);
             }
 
-            int textCursorPosition = txtTrainingBounds.SelectionStart;
-            String[] lines = txtTrainingBounds.Lines;
-            String[] aspects = new String[lines.Length];
+            TrainingData_UpdateAspectRatios();
+        }
 
-            for (int i = 0, iLen = lines.Length; i < iLen; i++)
+        private void TrainingData_UpdateAspectRatios()
+        {
+            int[] selections = gallery.CurrentImage().selections;
+            DataGridViewRowCollection rows = gridTrainingSources.Rows;
+
+            for (int i = 0; i < selections.Length; i += 4)
             {
-                string line = lines[i];
-                string newLine = Regex.Replace(line, "[^0-9, ]", "");
-                lines[i] = newLine;
-                textCursorPosition -= line.Length - newLine.Length;
+                DataGridViewRow row = rows[i];
 
-                newLine = Regex.Replace(newLine, "[ ]", "");
-                string[] components = newLine.Split(',');
-                string aspect = "";
                 try
                 {
-                    if (components.Length == 4)
-                    {
-                        int x = int.Parse(components[0]),
-                            y = int.Parse(components[1]),
-                            w = int.Parse(components[2]),
-                            h = int.Parse(components[3]),
-                            gcd = Util.GreatestCommonDivisor(w, h);
+                    int w = selections[i + 2],
+                        h = selections[i + 3],
+                        gcd = Util.GreatestCommonDivisor(w, h);
 
-                        // TODO need to ensure are valid for image
-                        //MessageBox.Show("w: " + w + ", h: " + h + " , gcd: " + gcd);
+                    string aspect = $"{w / gcd}:{h / gcd}";
 
-                        aspect += w / gcd + ":" + h / gcd;
+                    //if (aspect.Length > 4) aspect = $"{(w/(float)h):#.#}";
 
-                        if (userEdit)
-                        {
-                            // TODO add new bounds to current image
-                        }
-                    }
-                } catch { }
+                    row.Cells[4].Value = aspect;
+                }
+                catch { }
+            }
+        }
 
-                aspects[i] = aspect;
+        private void gridTrainingSources_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            int[] selections = gallery.CurrentImage().selections;
+            DataGridViewRowCollection rows = gridTrainingSources.Rows;
+
+            // stopping at Count-1 because the empty new row is included
+            for (int i=0, j=0; j<rows.Count-1; j++)
+            {
+                DataGridViewRow row = rows[j];
+
+                try
+                {
+                    selections[i++] = int.Parse(row.Cells[0].Value.ToString());
+                    selections[i++] = int.Parse(row.Cells[1].Value.ToString());
+                    selections[i++] = int.Parse(row.Cells[2].Value.ToString());
+                    selections[i++] = int.Parse(row.Cells[3].Value.ToString());
+                }
+                catch { }
             }
 
-            txtTrainingBounds.Lines = lines;
-            txtTrainingBounds.SelectionStart = textCursorPosition;
-            txtTrainingAspects.Lines = aspects;
+            TrainingData_UpdateAspectRatios();
         }
 
         #endregion
@@ -661,6 +704,12 @@ namespace ImageTagger
             btnCollapseSidePanel.Location = new Point(buttonLeft, btnCollapseSidePanel.Location.Y);
             btnCollapseSidePanel.Text = (pnlLeft.Visible ? "<" : ">");
             Repaint();
+        }
+
+        private void lblDatabase_Click(object sender, EventArgs e)
+        {
+            pnlDatabase.Visible = !pnlDatabase.Visible;
+            lblDatabase.Text = "Database " + (pnlDatabase.Visible ? "⏶" : "⏷");
         }
 
         private void lblSettings_Click(object sender, EventArgs e)
@@ -746,7 +795,7 @@ namespace ImageTagger
 
     internal class ImageTaggerDatabase
     {
-        string databaseLocation = "./images_tags_database.txt";
+        public string databaseLocation = "./TagsDatabase.txt";
         //public List<string> tags = new List<string>();
         public Dictionary<string, List<TaggedImage>> tags = new Dictionary<string, List<TaggedImage>>();
         public Dictionary<string, TaggedImage> images = new Dictionary<string, TaggedImage>();
@@ -779,11 +828,9 @@ namespace ImageTagger
 
             return imagesInfo;
         }
-
-        // maybe don't save any tags with 0 entries, from typos etc along the way
+        
         public void Save()
         {
-            /*
             string tempPath = databaseLocation + "_temp";
 
             if (File.Exists(tempPath))
@@ -794,63 +841,75 @@ namespace ImageTagger
 
             using (StreamWriter writetext = new StreamWriter(tempPath))
             {
-                writetext.WriteLine(string.Join(",", tags)); // write the tags on the first line
+                Dictionary<TaggedImage, List<string>> allImageTags = GetAllImageTags();
 
-                foreach (TaggedImage taggedImage in images)
+                foreach (KeyValuePair<TaggedImage, List<string>> imageTags in allImageTags)
                 {
-                    writetext.WriteLine(
-                        taggedImage.filepath + ',' +
-                        string.Join(",", taggedImage.selection) + ',' +
-                        string.Join(",", taggedImage.tagIndices) );
+                    TaggedImage image = imageTags.Key;
+
+                    writetext.WriteLine(image.filepath);
+                    writetext.WriteLine($"{string.Join(",", image.selections)}"); // can't validate these if the image data was never loaded, so python will need to fall back to same implementation
+                    writetext.WriteLine($"{string.Join(",", imageTags.Value)}");
                 }
             }
 
             if (File.Exists(databaseLocation))
                 File.Delete(databaseLocation);
             System.IO.File.Move(tempPath, databaseLocation);
-            */
         }
 
-        public void Load()
+        public void Load(bool userActivated)
         {
-            /*
             if (!File.Exists(databaseLocation))
-                return;
-
-            string[] lines = File.ReadAllLines(databaseLocation);
-
-            for (int i = 0, iLen = lines.Length; i < iLen; i++)
             {
-                string[] line = lines[i].Split(',');
+                if (userActivated)
+                    MessageBox.Show(databaseLocation + " doesn't exist", "Error Loading", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
-                if (i == 0)
-                    foreach (string tag in line) tags.Add(tag);
-                else
+            this.tags.Clear();
+            this.images.Clear();
+
+            using (StreamReader sr = new StreamReader(databaseLocation))
+            {
+                int stage = 0;
+                TaggedImage image = null;
+                string line;
+
+                while ((line = sr.ReadLine()) != null)
                 {
-                    TaggedImage taggedImage = new TaggedImage ( line[0] );
-
-                    for (int j = 1, jLen = line.Length; j < jLen; j++)
+                    if (stage==0)
                     {
-                        int number = int.Parse(line[j]);
-
-                        if (j <= 4)
-                            taggedImage.selection[j - 1] = number; // bounds are first 4 numbers
-                        else
-                            taggedImage.tagIndices.Add(number); // tag indices are the rest
+                        image = new TaggedImage(line);
+                        images[line] = image;
                     }
+                    else if (stage==1)
+                    {
+                        image.selections = (line.Split(',').Select(x => int.Parse(x))).ToArray();
+                    }
+                    else
+                    {
+                        string[] imageTags = line.Split(',');
+                        foreach (string tag in imageTags)
+                        {
+                            EnsureTagExists(tag);
+                            this.tags[tag].Add(image);
+                        }
+                    }
+
+                    stage = (stage + 1) % 3;
                 }
             }
-            */
         }
 
         public List<string> GetImageTags(TaggedImage image)
         {
             List<string> imageTags = new List<string>();
 
-            foreach (KeyValuePair<string, List<TaggedImage>> entry in this.tags)
+            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in this.tags)
             {
-                if (entry.Value.Contains(image))
-                    imageTags.Add(entry.Key);
+                if (tagImages.Value.Contains(image))
+                    imageTags.Add(tagImages.Key);
             }
 
             return imageTags;
@@ -860,10 +919,10 @@ namespace ImageTagger
         {
             List<string> imageTags = new List<string>();
 
-            foreach (KeyValuePair<string, List<TaggedImage>> entry in this.tags)
+            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in this.tags)
             {
-                if (Util.ContainsAll(entry.Value, images))
-                    imageTags.Add(entry.Key);
+                if (Util.ContainsAll(tagImages.Value, images))
+                    imageTags.Add(tagImages.Key);
             }
 
             return imageTags;
@@ -877,7 +936,7 @@ namespace ImageTagger
             }
         }
 
-        public List<TaggedImage> GetImagesWithTags(List<string> tagList, bool requiresAllTags)
+        public List<TaggedImage> GetFilteredImages(List<string> tagList, bool requiresAllTags)
         {
             List<TaggedImage> images = new List<TaggedImage>();
 
@@ -908,13 +967,25 @@ namespace ImageTagger
             return images;
         }
 
+        public Dictionary<TaggedImage, List<string>> GetAllImageTags()
+        {
+            Dictionary<TaggedImage, List<string>> allImageTags = new Dictionary<TaggedImage, List<string>>();
+
+            foreach (TaggedImage image in this.images.Values)
+                allImageTags[image] = new List<string>();
+
+            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in this.tags)
+                foreach (TaggedImage image in tagImages.Value)
+                    allImageTags[image].Add(tagImages.Key);
+
+            return allImageTags;
+        }
     }
 
     internal class TaggedImage
     {
         public string filepath = "";
-        public string[] selections = new string[0];
-        //public List<int> tagIndices = new List<int>();
+        public int[] selections = new int[0];
 
         public TaggedImage(string filepath)
         {
