@@ -11,7 +11,7 @@ Controls:
 
 Implemented:
 * Gallery functionality
-* Full-screen slideshow with timer setting
+* Full-screen slideshow with speed setting
 * Interpolation options
 * Somewhat efficient handling of large volumes of images (dragging in tens of thousands may take a minute)
 
