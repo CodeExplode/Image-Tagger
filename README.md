@@ -22,3 +22,4 @@ Implemented:
 Not Implemented:
 * Removing images from the current batch
 * WebP support, GIF playback
+* A visualization of training regions or a visual tool to select them
