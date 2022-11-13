@@ -9,13 +9,14 @@ using System.ComponentModel;
 
 
 // TODO
-// + ideally would only write what's changed/new to the database
-// + list images in database per directory, and load per directory (save a large amount of space and make it easier to change a directory)
-//  would be better to implement directories now so can have tags per directory, and select all in directory easily
-// + cache image data up to a certain size, read from hdd when reach uncached image. Can possibly keep a moving window of loaded images
-// + shouldn't add to database automatically, and gallery should hold cache of images. Instead have an Add to Database option, and maybe a (count) for how many aren't
+// + working tags
+// + working search by tags
+//      Might be best in a dictionary of <tag, images[]>, and images don't store their own tags? During training would want tags per image, but could cache at startup
+// + ideally would only write changes/additions to the database rather than the whole file
+// + group images in database per directory, and load per directory (save a large amount of text space and make it easier to change a directory)
+//      could also have tags per directory, and select all in a directory easily
 // + Add gif playback https://stackoverflow.com/a/13486374
-
+// + maybe shouldn't add new images to database automatically, and gallery should hold cache of unsaved images. Maybe have an 'Add to Database (count)' button
 
 namespace ImageTagger
 {
@@ -107,7 +108,7 @@ namespace ImageTagger
 
         private void ScrollGallery(bool toRight)
         {
-            int gallerySize = gallery.imageData.Count;
+            int gallerySize = gallery.images.Count;
 
             if (gallerySize < 2) return;
 
@@ -141,7 +142,7 @@ namespace ImageTagger
             }
             else
             {
-                this.Text = Path.GetFileName(database.images[gallery.index].filepath);
+                this.Text = Path.GetFileName(gallery.CurrentImageInfo().filepath);
                 // TODO fill in filters/training selection
             }
 
@@ -169,7 +170,7 @@ namespace ImageTagger
 
         protected override void OnPaint(PaintEventArgs paintEventArgs)
         {
-            Image image = gallery.CurrentImage();
+            Image image = gallery.CurrentImageData();
 
             if (image != null)
             {
@@ -236,7 +237,7 @@ namespace ImageTagger
 
             if (!returnPercent)
             {
-                Image image = gallery.CurrentImage();
+                Image image = gallery.CurrentImageData();
 
                 if (image != null)
                 {
@@ -454,12 +455,12 @@ namespace ImageTagger
             if (!chkBatchTag.Checked)
             {
                 if (gallery.images.Count > 0)
-                    tagIndices = gallery.images[gallery.index].tagIndices;
+                    tagIndices = gallery.CurrentImageInfo().tagIndices;
             } else {
                 // get only common tags for all images in gallery
                 for (int i=0, iLen=gallery.images.Count; i<iLen; i++)
                 {
-                    List<int> imgTagIndices = database.images[i].tagIndices;
+                    List<int> imgTagIndices = gallery.CurrentImageInfo().tagIndices;
 
                     if (i==0)
                         tagIndices.AddRange(imgTagIndices);
@@ -605,9 +606,13 @@ namespace ImageTagger
             lblSettings.Text = "Settings " + (pnlSettings.Visible ? "⏶" : "⏷");
         }
 
+        private void frmImageTaggerMain_Resize(object sender, EventArgs e)
+        {
+            Repaint();
+        }
+
         #endregion
 
-        
     }
 
     #region DATABASE
@@ -617,9 +622,8 @@ namespace ImageTagger
         public ImageDatabase database;
         public int index = 0;
         public List<TaggedImage> images = new List<TaggedImage>();
-        public List<Image> imageData = new List<Image>();
+        public Dictionary<TaggedImage, Image> imageData = new Dictionary<TaggedImage, Image>();
 
-        private int images_in_memory = 0;
         private static int max_images_in_memory = 20;
 
         public Gallery(ImageDatabase database)
@@ -633,61 +637,46 @@ namespace ImageTagger
             {
                 this.index = 0;
                 this.images = images;
-                this.imageData = new List<Image>( new Image[images.Count] );
+                this.imageData.Clear();
             }
             else
             {
+                // TODO could be in a sorted set by filepath or something for quicker checking
                 foreach (TaggedImage image in images)
-                {
                     if (!this.images.Contains(image))
-                    {
                         this.images.Add(image);
-                        this.imageData.Add(null);
-                    }
-                }
             }
         }
 
-        public Image CurrentImage()
+        public TaggedImage CurrentImageInfo()
+        {
+            return this.images[this.index];
+        }
+
+        public Image CurrentImageData()
         {
             if (this.images.Count == 0)
                 return null;
 
-            Image imageData = this.imageData[this.index];
+            TaggedImage currentImage = this.CurrentImageInfo();
+            Image currentImageData;
 
-            if (imageData == null)
+            if (imageData.ContainsKey(currentImage))
             {
-                TaggedImage image = this.images[this.index];
-                imageData = Image.FromFile(image.filepath);
-                this.imageData[this.index] = imageData;
-                this.images_in_memory++;
-                PruneImageMemory();
+                currentImageData = imageData[currentImage];
+            }
+            else
+            {
+                currentImageData = Image.FromFile(currentImage.filepath);
+
+                // naive pruning solution since dictionaries aren't ordered, just wipe the dictionary. Could check for neighbours from this.images list
+                if (this.imageData.Count > max_images_in_memory)
+                    this.imageData.Clear();
+
+                this.imageData[currentImage] = currentImageData;
             }
 
-            return imageData;
-        }
-
-        private void PruneImageMemory()
-        {
-            if (this.images_in_memory <= max_images_in_memory)
-                return;
-
-            // not safe to assume all images in memory are around current index
-            // dragging in additions to a batch can jump index to new images
-            // just naively iterate for now
-
-            for (int i=0, iLen=this.imageData.Count; i<iLen; i++)
-            {
-                Image image = this.imageData[i];
-                if (image != null)
-                {
-                    if ((index - i) > max_images_in_memory/4)
-                    {
-                        this.imageData[i] = null;
-                        this.images_in_memory--;
-                    }
-                }
-            }
+            return currentImageData;
         }
     }
 
@@ -695,7 +684,7 @@ namespace ImageTagger
     {
         string databaseLocation = "./images_tags_database.txt";
         public List<string> tags = new List<string>();
-        public List<TaggedImage> images = new List<TaggedImage>();
+        public Dictionary<string, TaggedImage> images = new Dictionary<string, TaggedImage>();
 
         public List<TaggedImage> GetImageInfo(string[] imagePaths, bool add)
         {
@@ -704,48 +693,27 @@ namespace ImageTagger
 
             foreach (string imagePath in imagePaths)
             {
-                TaggedImage image = ImageInfo(imagePath);
-
-                if (image == null && add)
+                TaggedImage image = null;
+                
+                if (images.ContainsKey(imagePath))
+                {
+                    image = images[imagePath];
+                }
+                else if (add)
                 {
                     if (!imageChecker.IsValidImageFile(imagePath))
                         continue;
 
                     image = new TaggedImage(imagePath);
-                    this.images.Add(image);
+                    this.images[imagePath] = image;
                 }
 
-                imagesInfo.Add(image); 
+                if (image != null)
+                    imagesInfo.Add(image);
             }
 
             return imagesInfo;
         }
-
-        private TaggedImage ImageInfo(string imagePath)
-        {
-            for (int i = 0, iLen = images.Count; i < iLen; i++)
-            {
-                // naive search for now
-                TaggedImage image = images[i];
-                if (image.filepath == imagePath)
-                    return image;
-            }
-
-            return null ;
-        }
-
-        /*private int FindImageID(string imagePath)
-        {
-            for (int i=0, iLen=images.Count; i<iLen; i++)
-            {
-                // naive search for now
-                TaggedImage image = images[i];
-                if (image.filepath == imagePath)
-                    return i;
-            }
-
-            return -1;
-        }*/
 
         public void Save()
         {
