@@ -22,3 +22,4 @@ Not Implemented:
 * AI Data Clipping Regions
 * Saving/Loading the database
 * Removing images from the current batch
+* WebP support, GIF playback
