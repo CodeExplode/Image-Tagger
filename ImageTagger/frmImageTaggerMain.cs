@@ -6,27 +6,31 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Drawing.Drawing2D;
 using System.ComponentModel;
+using System.Linq;
 
 
 // TODO
-// + working tags
-// + working search by tags
-//      Might be best in a dictionary of <tag, images[]>, and images don't store their own tags? During training would want tags per image, but could cache at startup
+// + searches with exclusions, e.g. SourceName, -SourceName_ to find images with the source but not a character name (could have a negative filter)
 // + ideally would only write changes/additions to the database rather than the whole file
 // + group images in database per directory, and load per directory (save a large amount of text space and make it easier to change a directory)
 //      could also have tags per directory, and select all in a directory easily
 // + Add gif playback https://stackoverflow.com/a/13486374
 // + maybe shouldn't add new images to database automatically, and gallery should hold cache of unsaved images. Maybe have an 'Add to Database (count)' button
+// + maybe a validate button which will compile a list of all images which no longer exist,and give an option to clear them
+//   or potentially relocate them (scanning in existing directories). Could cache some more imageinfo for that, like file size, resolution
+// + allow minimum zoom to at least be the original size of the picture, for small pictures
+// + maybe add an auto-zoom checkbox to settings
 
 namespace ImageTagger
 {
     public partial class frmImageTaggerMain : Form
     {
-        ImageDatabase database;
+        ImageTaggerDatabase database;
         Gallery gallery;
         bool inBatchMode;
 
         Timer timerSlideshow;
+        Timer timerFilterCooldown;
 
         RectangleF imageBounds = new RectangleF();
         bool cursorOnImage; // a hack to get around there being no scroll events on forms
@@ -47,7 +51,7 @@ namespace ImageTagger
         {
             SetBatchMode(false);
 
-            database = new ImageDatabase();
+            database = new ImageTaggerDatabase();
             database.Load();
 
             gallery = new Gallery(database);
@@ -64,6 +68,10 @@ namespace ImageTagger
 
             timerSlideshow = new Timer();
             timerSlideshow.Tick += new System.EventHandler(this.timerSlideshow_Tick);
+
+            timerFilterCooldown = new Timer();
+            timerFilterCooldown.Tick += new System.EventHandler(this.timerFilterCooldown_Tick);
+            timerFilterCooldown.Interval = 1500;
         }
 
 
@@ -83,8 +91,9 @@ namespace ImageTagger
                 List<TaggedImage> images = database.GetImageInfo(filenames, true);
                 if (images.Count> 0)
                 {
-                    bool batch = images.Count > 1 || inBatchMode;
-                    AddToGallery(images, batch);
+                    bool isBatch = images.Count > 1 || inBatchMode;
+                    bool clearGallery = !isBatch || !inBatchMode;
+                    AddToGallery(images, clearGallery, isBatch);
                 }
             }
         }
@@ -94,16 +103,13 @@ namespace ImageTagger
 
         #region GALLERY
 
-        private void AddToGallery(List<TaggedImage> images, bool batch)
+        private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch)
         {
-            bool clearGallery = !batch || !inBatchMode;
-
             gallery.AddImages(images, clearGallery);
-            SetBatchMode(batch);
+            SetBatchMode(isBatch);
             ClearFocus();
-            gallery.index = gallery.images.IndexOf(images[0]);
+            gallery.index = (images.Count == 0 ? 0 : gallery.images.IndexOf(images[0]));
             ImageChanged();
-
         }
 
         private void ScrollGallery(bool toRight)
@@ -135,15 +141,20 @@ namespace ImageTagger
             this.pan.X = 0;
             this.pan.Y = 0;
 
-            if (gallery.imageData.Count == 0)
+            if (gallery.images.Count == 0)
             {
                 this.Text = "Image Tagger";
-                // TODO clear tags/training selection (maybe even hide)
+                txtTags.Text = "";
+                // TODO clear training area values (maybe even hide tags and training area)
             }
             else
             {
-                this.Text = Path.GetFileName(gallery.CurrentImageInfo().filepath);
-                // TODO fill in filters/training selection
+                Image image = gallery.CurrentImageData();
+                this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({image.Size.Width}x{image.Size.Height})";
+                // TODO fill in training area values
+
+                if (!chkBatchTag.Checked)
+                    DisplayTags();
             }
 
             Repaint();
@@ -186,9 +197,10 @@ namespace ImageTagger
                 imageBounds.Y += pan.Y * imageBounds.Height;
 
                 paintEventArgs.Graphics.InterpolationMode = (InterpolationMode)cmbInterpolationModes.SelectedItem;
-                //if (paintEventArgs.Graphics.InterpolationMode == InterpolationMode.NearestNeighbor)
-                    paintEventArgs.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
+                paintEventArgs.Graphics.PixelOffsetMode = PixelOffsetMode.Half; // needed for nearest neighbor, left on for all for consistent positioning
 
+                // these don't seem to help with slow bicubic draw speed when zoomed in
+                // might need to try instead drawing only correct part of image
                 //paintEventArgs.Graphics.Clip = new Region(new Rectangle(0, 0, DisplayRectangle.Width, DisplayRectangle.Height));
                 //paintEventArgs.Graphics.SetClip(DisplayRectangle);
 
@@ -411,7 +423,7 @@ namespace ImageTagger
             ColorDialog clrDialog = new ColorDialog();
             
             clrDialog.Color = this.BackColor;
-            clrDialog.CustomColors = new int[] { 0xD6DED4, 0xDDDDDD, 0xA1A1A1, 0x4B4B4B, 0x242424, 0x000000 };
+            clrDialog.CustomColors = new int[] { 0xD6DED4, 0xDDDDDD, 0xA1A1A1, 0x6D6A67, 0x4B4B4B, 0x242424, 0x000000 };
 
             if (clrDialog.ShowDialog() == DialogResult.OK)
                 this.BackColor = clrDialog.Color;
@@ -440,7 +452,7 @@ namespace ImageTagger
 
         private void chkBatchTag_CheckedChanged(object sender, EventArgs e)
         {
-            RefreshTags();
+            DisplayTags();
         }
 
         #endregion
@@ -448,44 +460,95 @@ namespace ImageTagger
 
         #region TAGS
 
-        private void RefreshTags()
+        private void DisplayTags()
         {
-            List<int> tagIndices = new List<int>();
+            List<string> tags = new List<string>();
 
-            if (!chkBatchTag.Checked)
-            {
-                if (gallery.images.Count > 0)
-                    tagIndices = gallery.CurrentImageInfo().tagIndices;
-            } else {
-                // get only common tags for all images in gallery
-                for (int i=0, iLen=gallery.images.Count; i<iLen; i++)
-                {
-                    List<int> imgTagIndices = gallery.CurrentImageInfo().tagIndices;
+            if (gallery.images.Count > 0)
+                if (!chkBatchTag.Checked)
+                    tags = database.GetImageTags(gallery.CurrentImage());
+                else
+                    tags = database.GetSharedImageTags(gallery.images);
 
-                    if (i==0)
-                        tagIndices.AddRange(imgTagIndices);
-                    else
-                        Util.PruneToSharedEntries(tagIndices, imgTagIndices);
-                }
-            }
-            
             // print tagIndices
-            List<string> tags = database.tags;
             string tagsText = "";
 
-            for (int i=0; i<tagIndices.Count; i++) 
+            foreach (string tag in tags)
+                tagsText += tag + ", ";
+
+            txtTags.Text = tagsText;
+        }
+
+        private void txtFilter_Leave(object sender, EventArgs e)
+        {
+            // update
+        }
+
+        // need to remove from any tags now not in
+        // so need to iterate all tags
+        private void txtTags_Leave(object sender, EventArgs e)
+        {
+            if (gallery.images.Count == 0) return;
+            TaggedImage currentImage = (chkBatchTag.Checked ? null : gallery.CurrentImage());
+
+            List<string> tagWords = Util.ParseTagText(txtTags.Text);
+
+            foreach (string tagWord in tagWords)
+                database.EnsureTagExists(tagWord);
+
+            foreach (KeyValuePair<string, List<TaggedImage>> tagDetails in database.tags)
             {
-                string tag = tags[tagIndices[i]];
-                tagsText += (i > 0 ? ", " : "") + tag;
+                List<TaggedImage> imagesForTag = tagDetails.Value;
+                bool validTag = tagWords.Contains(tagDetails.Key);
+
+                if (chkBatchTag.Checked)
+                {
+                    if (validTag)
+                        Util.AddNewElements(imagesForTag, gallery.images);
+                }
+                else
+                {
+                    bool imageIsTagged = imagesForTag.Contains(currentImage);
+
+                    if (validTag && !imageIsTagged)
+                        imagesForTag.Add(currentImage);
+                    else if (!validTag && imageIsTagged)
+                        imagesForTag.Remove(currentImage);
+                }
+            }
+
+            // remove any tags which all the batch items have, but which aren't in the text set (means was manually removed from the list)
+            if (chkBatchTag.Checked)
+            {
+                List<string> sharedTags = database.GetSharedImageTags(gallery.images);
+                IEnumerable<string> invalidBatchTags = sharedTags.Except(tagWords);
+
+                foreach (string invalidtag in invalidBatchTags)
+                {
+                    List<TaggedImage> imagesForTag = database.tags[invalidtag];
+                    Util.RemoveElements(imagesForTag, gallery.images);
+                }
             }
         }
 
-        private void txtTags_TextChanged(object sender, EventArgs e)
+        private void txtFilter_TextChanged(object sender, EventArgs e)
         {
-            // maybe put a small cooldown so can handle huge image volumes
-            // or don't apply tag until hit space or , or lose focus, or even just have an apply button
+            if (timerFilterCooldown.Enabled)
+                timerFilterCooldown.Stop();
+
+            timerFilterCooldown.Enabled = true;
+            timerFilterCooldown.Start();
         }
 
+        private void timerFilterCooldown_Tick(object sender, EventArgs e)
+        {
+            timerFilterCooldown.Enabled = false;
+
+            List<string> tagWords = Util.ParseTagText(txtFilter.Text);
+            List<TaggedImage> newGallery = database.GetImagesWithTags(tagWords, true);
+
+            AddToGallery(newGallery, true, false);
+        }
 
         #endregion
 
@@ -611,6 +674,7 @@ namespace ImageTagger
             Repaint();
         }
 
+
         #endregion
 
     }
@@ -619,14 +683,14 @@ namespace ImageTagger
 
     internal class Gallery
     {
-        public ImageDatabase database;
+        public ImageTaggerDatabase database;
         public int index = 0;
         public List<TaggedImage> images = new List<TaggedImage>();
         public Dictionary<TaggedImage, Image> imageData = new Dictionary<TaggedImage, Image>();
 
         private static int max_images_in_memory = 20;
 
-        public Gallery(ImageDatabase database)
+        public Gallery(ImageTaggerDatabase database)
         {
             this.database = database;
         }
@@ -648,7 +712,7 @@ namespace ImageTagger
             }
         }
 
-        public TaggedImage CurrentImageInfo()
+        public TaggedImage CurrentImage()
         {
             return this.images[this.index];
         }
@@ -658,7 +722,7 @@ namespace ImageTagger
             if (this.images.Count == 0)
                 return null;
 
-            TaggedImage currentImage = this.CurrentImageInfo();
+            TaggedImage currentImage = this.CurrentImage();
             Image currentImageData;
 
             if (imageData.ContainsKey(currentImage))
@@ -680,10 +744,11 @@ namespace ImageTagger
         }
     }
 
-    internal class ImageDatabase
+    internal class ImageTaggerDatabase
     {
         string databaseLocation = "./images_tags_database.txt";
-        public List<string> tags = new List<string>();
+        //public List<string> tags = new List<string>();
+        public Dictionary<string, List<TaggedImage>> tags = new Dictionary<string, List<TaggedImage>>();
         public Dictionary<string, TaggedImage> images = new Dictionary<string, TaggedImage>();
 
         public List<TaggedImage> GetImageInfo(string[] imagePaths, bool add)
@@ -715,6 +780,7 @@ namespace ImageTagger
             return imagesInfo;
         }
 
+        // maybe don't save any tags with 0 entries, from typos etc along the way
         public void Save()
         {
             /*
@@ -777,13 +843,78 @@ namespace ImageTagger
             */
         }
 
+        public List<string> GetImageTags(TaggedImage image)
+        {
+            List<string> imageTags = new List<string>();
+
+            foreach (KeyValuePair<string, List<TaggedImage>> entry in this.tags)
+            {
+                if (entry.Value.Contains(image))
+                    imageTags.Add(entry.Key);
+            }
+
+            return imageTags;
+        }
+
+        public List<string> GetSharedImageTags(List<TaggedImage> images)
+        {
+            List<string> imageTags = new List<string>();
+
+            foreach (KeyValuePair<string, List<TaggedImage>> entry in this.tags)
+            {
+                if (Util.ContainsAll(entry.Value, images))
+                    imageTags.Add(entry.Key);
+            }
+
+            return imageTags;
+        }
+
+        public void EnsureTagExists(string tag)
+        {
+            if (!this.tags.ContainsKey(tag))
+            {
+                this.tags[tag] = new List<TaggedImage>();
+            }
+        }
+
+        public List<TaggedImage> GetImagesWithTags(List<string> tagList, bool requiresAllTags)
+        {
+            List<TaggedImage> images = new List<TaggedImage>();
+
+            for (int i = 0; i < tagList.Count; i++)
+            {
+                string tag = tagList[i];
+
+                if (!this.tags.ContainsKey(tag))
+                {
+                    if (requiresAllTags)
+                        return new List<TaggedImage>(); // won't have any results for an invalid tag where all tags are required
+                    continue;
+                }
+
+                List<TaggedImage> imagesForTag = this.tags[tag];
+
+                if (i == 0)
+                    images.AddRange(imagesForTag);
+                else
+                {
+                    if (requiresAllTags)
+                        Util.PruneToSharedEntries(images, imagesForTag);
+                    else
+                        Util.AddNewElements(images, imagesForTag);
+                }
+            }
+
+            return images;
+        }
+
     }
 
     internal class TaggedImage
     {
         public string filepath = "";
         public string[] selections = new string[0];
-        public List<int> tagIndices = new List<int>();
+        //public List<int> tagIndices = new List<int>();
 
         public TaggedImage(string filepath)
         {
@@ -813,10 +944,46 @@ namespace ImageTagger
             }
             return control;
         }
+
         public static void PruneToSharedEntries<T>(List<T> list, List<T> secondary)
         {
             // https://stackoverflow.com/a/4066127
             list.RemoveAll(item => !secondary.Contains(item));
+        }
+
+        public static bool ContainsAll<T>(IEnumerable<T> source, IEnumerable<T> values)
+        {
+            // https://stackoverflow.com/a/36856433
+            return values.All(value => source.Contains(value));
+        }
+
+        public static void AddNewElements<T>(List<T> list, IEnumerable<T> elements)
+        {
+            // https://stackoverflow.com/a/48218620
+            list.AddRange(elements.Except(list));
+        }
+
+        public static void RemoveElements<T>(List<T> list, IEnumerable<T> elements)
+        {
+            foreach (T element in elements)
+                list.Remove(element);
+        }
+
+        public static List<string> ParseTagText(string text)
+        {
+            text = Regex.Replace(text, @"\t|\n|\r", ""); // trim new lines, https://stackoverflow.com/a/4140802
+
+            List<string> tagWords = text.Split(',').ToList();
+            for (int i = tagWords.Count - 1; i >= 0; i--)
+            {
+                string tagWord = tagWords[i].Trim(' ');
+                if (tagWord.Length > 0)
+                    tagWords[i] = tagWord;
+                else
+                    tagWords.RemoveAt(i); // remove any blank tags
+            }
+
+            return tagWords;
         }
 
         public class ValidImageChecker
