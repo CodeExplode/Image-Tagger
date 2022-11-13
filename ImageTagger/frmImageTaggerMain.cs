@@ -16,6 +16,7 @@ using System.ComponentModel;
 // + shouldn't add to database automatically, and gallery should hold cache of images. Instead have an Add to Database option, and maybe a (count) for how many aren't
 // + Add gif playback https://stackoverflow.com/a/13486374
 
+
 namespace ImageTagger
 {
     public partial class frmImageTaggerMain : Form
@@ -48,7 +49,7 @@ namespace ImageTagger
             database = new ImageDatabase();
             database.Load();
 
-            gallery = new Gallery();
+            gallery = new Gallery(database);
 
             ClearFocus();
 
@@ -78,30 +79,13 @@ namespace ImageTagger
             if (data != null)
             {
                 var filenames = data as string[];
-                if (filenames.Length > 0)
-                    LoadImages(filenames);
-            }
-        }
-
-        private void LoadImages(string[] filenames)
-        {
-            List<string> validPaths = new List<string>();
-            List<Image> validImages = new List<Image>();
-
-            foreach (string filename in filenames)
-            {
-                try
+                List<TaggedImage> images = database.GetImageInfo(filenames, true);
+                if (images.Count> 0)
                 {
-                    Image image = Image.FromFile(filename);
-                    validPaths.Add(filename);
-                    validImages.Add(image);
+                    bool batch = images.Count > 1 || inBatchMode;
+                    AddToGallery(images, batch);
                 }
-                catch { }
             }
-
-            List<int> imageIDs = database.GetimageIDs(validPaths, true);
-            // TODO should clear txtSearch
-            SetupGallery(imageIDs, validImages, true);
         }
 
         #endregion
@@ -109,15 +93,16 @@ namespace ImageTagger
 
         #region GALLERY
 
-        private void SetupGallery(List<int> imageIDs, List<Image> imageData, bool allowBatch)
+        private void AddToGallery(List<TaggedImage> images, bool batch)
         {
-            allowBatch = allowBatch && (imageIDs.Count > 1 || gallery.imageIDs.Count > 1);
+            bool clearGallery = !batch || !inBatchMode;
 
-            gallery.Setup(imageIDs, imageData, allowBatch);
-            SetBatchMode(allowBatch);
+            gallery.AddImages(images, clearGallery);
+            SetBatchMode(batch);
             ClearFocus();
-            gallery.currentIndex = gallery.imageIDs.IndexOf(imageIDs[0]);
+            gallery.index = gallery.images.IndexOf(images[0]);
             ImageChanged();
+
         }
 
         private void ScrollGallery(bool toRight)
@@ -126,12 +111,12 @@ namespace ImageTagger
 
             if (gallerySize < 2) return;
 
-            gallery.currentIndex += (toRight ? 1 : -1);
+            gallery.index += (toRight ? 1 : -1);
 
-            if (gallery.currentIndex < 0)
-                gallery.currentIndex = gallerySize - 1;
-            else if (gallery.currentIndex >= gallerySize)
-                gallery.currentIndex = 0;
+            if (gallery.index < 0)
+                gallery.index = gallerySize - 1;
+            else if (gallery.index >= gallerySize)
+                gallery.index = 0;
 
             ImageChanged();
 
@@ -156,7 +141,7 @@ namespace ImageTagger
             }
             else
             {
-                this.Text = Path.GetFileName(database.images[gallery.currentIndex].filepath);
+                this.Text = Path.GetFileName(database.images[gallery.index].filepath);
                 // TODO fill in filters/training selection
             }
 
@@ -265,7 +250,7 @@ namespace ImageTagger
 
         private void ToggleSlideshow()
         {
-            if (this.FormBorderStyle == FormBorderStyle.Sizable && this.gallery.imageIDs.Count > 0)
+            if (this.FormBorderStyle == FormBorderStyle.Sizable && this.gallery.images.Count > 0)
             {
                 ClearFocus();
 
@@ -444,7 +429,7 @@ namespace ImageTagger
             //chkBatchTag.Checked = inBatchMode;
             
             if (inBatchMode)
-                chkBatchTag.Text = $"Batch Tag ({gallery.imageIDs.Count})";
+                chkBatchTag.Text = $"Batch Tag ({gallery.images.Count})";
         }
 
         private void btnExitBatch_Click(object sender, EventArgs e)
@@ -468,13 +453,13 @@ namespace ImageTagger
 
             if (!chkBatchTag.Checked)
             {
-                if (gallery.imageIDs.Count > 0)
-                    tagIndices = database.images[gallery.imageIDs[gallery.currentIndex]].tagIndices;
+                if (gallery.images.Count > 0)
+                    tagIndices = gallery.images[gallery.index].tagIndices;
             } else {
                 // get only common tags for all images in gallery
-                for (int i=0, iLen=gallery.imageIDs.Count; i<iLen; i++)
+                for (int i=0, iLen=gallery.images.Count; i<iLen; i++)
                 {
-                    List<int> imgTagIndices = database.images[gallery.imageIDs[i]].tagIndices;
+                    List<int> imgTagIndices = database.images[i].tagIndices;
 
                     if (i==0)
                         tagIndices.AddRange(imgTagIndices);
@@ -629,38 +614,80 @@ namespace ImageTagger
 
     internal class Gallery
     {
-        public int currentIndex = 0;
-        public List<int> imageIDs = new List<int>();
+        public ImageDatabase database;
+        public int index = 0;
+        public List<TaggedImage> images = new List<TaggedImage>();
         public List<Image> imageData = new List<Image>();
 
-        public void Setup(List<int> imageIDs, List<Image> imageData, bool append)
-        {
-            this.currentIndex = 0;
+        private int images_in_memory = 0;
+        private static int max_images_in_memory = 20;
 
-            if (append)
+        public Gallery(ImageDatabase database)
+        {
+            this.database = database;
+        }
+
+        public void AddImages(List<TaggedImage> images, bool clear)
+        {
+            if (clear)
             {
-                for (int i=0, iLen=imageIDs.Count; i<iLen; i++)
-                {
-                    if (!this.imageIDs.Contains(imageIDs[i]))
-                    {
-                        this.imageIDs.Add(imageIDs[i]);
-                        this.imageData.Add(imageData[i]);
-                    }
-                }
+                this.index = 0;
+                this.images = images;
+                this.imageData = new List<Image>( new Image[images.Count] );
             }
             else
             {
-                this.imageIDs = imageIDs;
-                this.imageData = imageData;
+                foreach (TaggedImage image in images)
+                {
+                    if (!this.images.Contains(image))
+                    {
+                        this.images.Add(image);
+                        this.imageData.Add(null);
+                    }
+                }
             }
         }
 
         public Image CurrentImage()
         {
-            if (this.imageData.Count == 0)
+            if (this.images.Count == 0)
                 return null;
 
-            return this.imageData[this.currentIndex];
+            Image imageData = this.imageData[this.index];
+
+            if (imageData == null)
+            {
+                TaggedImage image = this.images[this.index];
+                imageData = Image.FromFile(image.filepath);
+                this.imageData[this.index] = imageData;
+                this.images_in_memory++;
+                PruneImageMemory();
+            }
+
+            return imageData;
+        }
+
+        private void PruneImageMemory()
+        {
+            if (this.images_in_memory <= max_images_in_memory)
+                return;
+
+            // not safe to assume all images in memory are around current index
+            // dragging in additions to a batch can jump index to new images
+            // just naively iterate for now
+
+            for (int i=0, iLen=this.imageData.Count; i<iLen; i++)
+            {
+                Image image = this.imageData[i];
+                if (image != null)
+                {
+                    if ((index - i) > max_images_in_memory/4)
+                    {
+                        this.imageData[i] = null;
+                        this.images_in_memory--;
+                    }
+                }
+            }
         }
     }
 
@@ -670,27 +697,44 @@ namespace ImageTagger
         public List<string> tags = new List<string>();
         public List<TaggedImage> images = new List<TaggedImage>();
 
-        public List<int> GetimageIDs(List<string> imagePaths, bool add)
+        public List<TaggedImage> GetImageInfo(string[] imagePaths, bool add)
         {
-            List<int> imageIDs = new List<int>();
+            List<TaggedImage> imagesInfo = new List<TaggedImage>();
+            Util.ValidImageChecker imageChecker = new Util.ValidImageChecker();
 
             foreach (string imagePath in imagePaths)
             {
-                int index = FindImageID(imagePath);
-                if (index == -1 && add)
+                TaggedImage image = ImageInfo(imagePath);
+
+                if (image == null && add)
                 {
-                    TaggedImage image = new TaggedImage(imagePath);
+                    if (!imageChecker.IsValidImageFile(imagePath))
+                        continue;
+
+                    image = new TaggedImage(imagePath);
                     this.images.Add(image);
-                    index = this.images.Count - 1;
                 }
 
-                imageIDs.Add(index);
+                imagesInfo.Add(image); 
             }
 
-            return imageIDs;
+            return imagesInfo;
         }
 
-        private int FindImageID(string imagePath)
+        private TaggedImage ImageInfo(string imagePath)
+        {
+            for (int i = 0, iLen = images.Count; i < iLen; i++)
+            {
+                // naive search for now
+                TaggedImage image = images[i];
+                if (image.filepath == imagePath)
+                    return image;
+            }
+
+            return null ;
+        }
+
+        /*private int FindImageID(string imagePath)
         {
             for (int i=0, iLen=images.Count; i<iLen; i++)
             {
@@ -701,7 +745,7 @@ namespace ImageTagger
             }
 
             return -1;
-        }
+        }*/
 
         public void Save()
         {
@@ -805,6 +849,79 @@ namespace ImageTagger
         {
             // https://stackoverflow.com/a/4066127
             list.RemoveAll(item => !secondary.Contains(item));
+        }
+
+        public class ValidImageChecker
+        {
+            // adapted from https://stackoverflow.com/a/49683945
+            byte[] bmp = new byte[] { 0x42, 0x4D };               // BMP "BM"
+            byte[] gif87a = new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 };     // "GIF87a"
+            byte[] gif89a = new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 };     // "GIF89a"
+            byte[] png = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };   // PNG "\x89PNG\x0D\0xA\0x1A\0x0A"
+            byte[] tiffI = new byte[] { 0x49, 0x49, 0x2A, 0x00 }; // TIFF II "II\x2A\x00"
+            byte[] tiffM = new byte[] { 0x4D, 0x4D, 0x00, 0x2A }; // TIFF MM "MM\x00\x2A"
+            byte[] jpeg = new byte[] { 0xFF, 0xD8, 0xFF };        // JPEG JFIF (SOI "\xFF\xD8" and half next marker xFF)
+            byte[] jpegEnd = new byte[] { 0xFF, 0xD9 };           // JPEG EOI "\xFF\xD9"
+
+            public bool IsValidImageFile(string file)
+            {
+                try
+                {
+                    byte[] buffer = new byte[8];
+                    byte[] bufferEnd = new byte[2];
+
+                    using (System.IO.FileStream fs = new System.IO.FileStream(file, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+                    {
+                        if (fs.Length > buffer.Length)
+                        {
+                            fs.Read(buffer, 0, buffer.Length);
+                            fs.Position = (int)fs.Length - bufferEnd.Length;
+                            fs.Read(bufferEnd, 0, bufferEnd.Length);
+                        }
+
+                        fs.Close();
+                    }
+
+                    if (ByteArrayStartsWith(buffer, bmp) ||
+                        ByteArrayStartsWith(buffer, gif87a) ||
+                        ByteArrayStartsWith(buffer, gif89a) ||
+                        ByteArrayStartsWith(buffer, png) ||
+                        ByteArrayStartsWith(buffer, tiffI) ||
+                        ByteArrayStartsWith(buffer, tiffM))
+                    {
+                        return true;
+                    }
+
+                    if (ByteArrayStartsWith(buffer, jpeg))
+                    {
+                        // Offset 0 (Two Bytes): JPEG SOI marker (FFD8 hex)
+                        // Offest 1 (Two Bytes): Application segment (FF?? normally ??=E0)
+                        // Trailer (Last Two Bytes): EOI marker FFD9 hex
+                        if (ByteArrayStartsWith(bufferEnd, jpegEnd))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Invalid Image File", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                return false;
+            }
+
+            private static bool ByteArrayStartsWith(byte[] a, byte[] b)
+            {
+                if (a.Length < b.Length)
+                    return false;
+
+                for (int i = 0; i < b.Length; i++)
+                    if (a[i] != b[i])
+                        return false;
+
+                return true;
+            }
         }
     }
 }
