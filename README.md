@@ -13,9 +13,9 @@ Implemented:
 * Gallery functionality
 * Full-screen slideshow with timer setting
 * Interpolation options
+* Somewhat efficient handling of large volumes of images (dragging in tens of thousands may take a minute)
 
 Not Implemented:
-* Efficient loading of images as needed. Dragging in a large number of images will try to load them all at once and possibly run out of memory.
 * Tagging
 * Searching Tags
 * AI Data Clipping Regions
