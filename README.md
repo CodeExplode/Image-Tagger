@@ -1,8 +1,7 @@
 # Image-Tagger
 A super simple image viewer with the ability to tag images, search by tags, and define clipping regions for AI training purposes
 
-![preview image](ImageTagger_v3.png)
-![preview image](ImageTagger_v4.png)
+![preview image](ImageTagger_v5.png)
 
 Controls:
 * Left/Right to scroll images, or click on the edges
