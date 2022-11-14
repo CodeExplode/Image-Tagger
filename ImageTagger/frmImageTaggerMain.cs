@@ -98,6 +98,7 @@ namespace ImageTagger
                     bool clearGallery = !isBatch || !inBatchMode;
                     AddToGallery(images, clearGallery, isBatch);
                 }
+                RefreshDatabaseCountLabel();
             }
         }
 
@@ -620,7 +621,8 @@ namespace ImageTagger
         private void lblTrainingData_Click(object sender, EventArgs e)
         {
             pnlResizableTrainingBounds.Visible = !pnlResizableTrainingBounds.Visible;
-            lblTrainingData.Text = "Training Sources " + (pnlResizableTrainingBounds.Visible ? "⏶" : "⏷");
+            lblTrainingData.Text = Util.FormatCollapsibleHeader(lblTrainingData.Text, !pnlResizableTrainingBounds.Visible);
+
             this.Repaint(); // repaint to add/remove visible selection box
         }
 
@@ -787,13 +789,22 @@ namespace ImageTagger
         private void lblDatabase_Click(object sender, EventArgs e)
         {
             pnlDatabase.Visible = !pnlDatabase.Visible;
-            lblDatabase.Text = "Database " + (pnlDatabase.Visible ? "⏶" : "⏷");
+            RefreshDatabaseCountLabel();
+        }
+
+        private void RefreshDatabaseCountLabel()
+        {
+            lblDatabase.Text = "Database";
+            if (database.images.Count > 0)
+                lblDatabase.Text += $"({Util.FormatNumberToKMB(database.images.Count)})";
+
+            lblDatabase.Text = Util.FormatCollapsibleHeader(lblDatabase.Text, !pnlDatabase.Visible);
         }
 
         private void lblSettings_Click(object sender, EventArgs e)
         {
             pnlSettings.Visible = !pnlSettings.Visible;
-            lblSettings.Text = "Settings " + (pnlSettings.Visible ? "⏶" : "⏷");
+            lblSettings.Text = Util.FormatCollapsibleHeader(lblSettings.Text, !pnlSettings.Visible);
         }
 
         private void frmImageTaggerMain_Resize(object sender, EventArgs e)
@@ -1147,6 +1158,32 @@ namespace ImageTagger
             }
 
             return 0;
+        }
+
+        public static string FormatNumberToKMB(decimal num)
+        {
+            // https://stackoverflow.com/a/48000498
+            if (num > 999999999 || num < -999999999)
+                return num.ToString("0,,,.###B");
+            else
+            if (num > 999999 || num < -999999)
+                return num.ToString("0,,.##M");
+            else
+            if (num > 999 || num < -999)
+                return num.ToString("0,.#K");
+            else
+                return num.ToString();
+        }
+
+        public static string FormatCollapsibleHeader(string text, bool collapsed)
+        {
+            string replace = (collapsed ? "⏶" : "⏷");
+            string with = (collapsed ? "⏷" : "⏶");
+
+            if (!text.Contains(replace) && !text.Contains(with))
+                return text + (text.EndsWith(" ") ? "" : " ") + with;
+
+            return text.Replace(replace, with);
         }
 
         public class ValidImageChecker
