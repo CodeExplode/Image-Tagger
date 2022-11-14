@@ -2,6 +2,7 @@
 A super simple image viewer with the ability to tag images, search by tags, and define clipping regions for AI training purposes
 
 ![preview image](ImageTagger_v3.png)
+![preview image](ImageTagger_v4.png)
 
 Controls:
 * Left/Right to scroll images, or click on the edges
@@ -21,5 +22,6 @@ Implemented:
 
 Not Implemented:
 * Removing images from the current batch
+* Removing images from the database (can be done manually with a text editor)
 * WebP support, GIF playback
-* A visualization of training regions or a visual tool to select them
+* A visual tool to select training regions
