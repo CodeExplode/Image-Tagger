@@ -23,5 +23,6 @@ Implemented:
 Not Implemented:
 * Removing images from the current batch
 * Removing images from the database (can be done manually with a text editor)
+* Negative search terms
 * WebP support, GIF playback
 * A visual tool to select training regions
