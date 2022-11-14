@@ -12,7 +12,7 @@ Controls:
 
 Implemented:
 * Tagging
-* Searching Tags
+* Searching images by tags
 * Saving/Loading the database of image locations, image tags, and image training regions
 * Definable regions for AI training (manual text input for now)
 * Gallery functionality
