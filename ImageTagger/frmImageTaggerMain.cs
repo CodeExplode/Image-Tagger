@@ -459,6 +459,7 @@ namespace ImageTagger
         {
             database.databaseLocation = txtDatabase.Text;
             database.Load(true);
+            RefreshDatabaseCountLabel();
         }
 
         private void btnSaveDatabase_Click(object sender, EventArgs e)
@@ -523,14 +524,7 @@ namespace ImageTagger
 
             txtTags.Text = tagsText;
         }
-
-        private void txtFilter_Leave(object sender, EventArgs e)
-        {
-            // update
-        }
-
-        // need to remove from any tags now not in
-        // so need to iterate all tags
+        
         private void txtTags_Leave(object sender, EventArgs e)
         {
             if (gallery.images.Count == 0) return;
@@ -674,10 +668,11 @@ namespace ImageTagger
             }
         }
 
-        // getting the active cell's value is difficult while being edited
-        // so pass in the value from the update event on the temporary editing control, will be -1 if empty or invalid (and read the old value which the cell still reports)
         private void TrainingData_ReadFromGrid(int currentCellValue)
         {
+            // getting the active cell's value is difficult while being edited
+            // so pass in the value from the update event on the temporary editing control, will be -1 if empty or invalid
+
             DataGridViewRowCollection rows = gridTrainingSources.Rows; // has an additional blank 'new' row which must be subtracted on Count checks
             DataGridViewCell currentCell = (currentCellValue == -1 ? null : gridTrainingSources.CurrentCell);
 
