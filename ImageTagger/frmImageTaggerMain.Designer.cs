@@ -48,6 +48,12 @@
             this.txtTags = new System.Windows.Forms.RichTextBox();
             this.lblTrainingData = new System.Windows.Forms.Label();
             this.pnlResizableTrainingBounds = new System.Windows.Forms.Panel();
+            this.gridTrainingSources = new System.Windows.Forms.DataGridView();
+            this.X = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Y = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.W = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.H = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Aspect = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.lblDatabase = new System.Windows.Forms.Label();
             this.pnlDatabase = new System.Windows.Forms.Panel();
             this.btnSaveDatabase = new System.Windows.Forms.Button();
@@ -60,22 +66,16 @@
             this.btnChangeBackground = new System.Windows.Forms.Button();
             this.cmbInterpolationModes = new System.Windows.Forms.ComboBox();
             this.btnCollapseSidePanel = new System.Windows.Forms.Button();
-            this.gridTrainingSources = new System.Windows.Forms.DataGridView();
-            this.X = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Y = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.W = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.H = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Aspect = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.pnlLeft.SuspendLayout();
             this.pnlLeftFlow.SuspendLayout();
             this.pnlResizableFilter.SuspendLayout();
             this.pnlBatch.SuspendLayout();
             this.panel1.SuspendLayout();
             this.pnlResizableTrainingBounds.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).BeginInit();
             this.pnlDatabase.SuspendLayout();
             this.pnlSettings.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numScrollSpeed)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).BeginInit();
             this.SuspendLayout();
             // 
             // pnlLeft
@@ -249,6 +249,92 @@
             this.pnlResizableTrainingBounds.MouseMove += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseMove);
             this.pnlResizableTrainingBounds.MouseUp += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseUp);
             // 
+            // gridTrainingSources
+            // 
+            this.gridTrainingSources.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.gridTrainingSources.BackgroundColor = System.Drawing.Color.White;
+            this.gridTrainingSources.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.gridTrainingSources.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            this.gridTrainingSources.ColumnHeadersHeight = 18;
+            this.gridTrainingSources.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            this.gridTrainingSources.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.X,
+            this.Y,
+            this.W,
+            this.H,
+            this.Aspect});
+            dataGridViewCellStyle7.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle7.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle7.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle7.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle7.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.gridTrainingSources.DefaultCellStyle = dataGridViewCellStyle7;
+            this.gridTrainingSources.Location = new System.Drawing.Point(0, 0);
+            this.gridTrainingSources.Name = "gridTrainingSources";
+            this.gridTrainingSources.RowHeadersWidth = 10;
+            this.gridTrainingSources.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+            this.gridTrainingSources.ShowEditingIcon = false;
+            this.gridTrainingSources.Size = new System.Drawing.Size(140, 90);
+            this.gridTrainingSources.TabIndex = 4;
+            this.gridTrainingSources.EditingControlShowing += new System.Windows.Forms.DataGridViewEditingControlShowingEventHandler(this.gridTrainingSources_EditingControlShowing);
+            this.gridTrainingSources.RowEnter += new System.Windows.Forms.DataGridViewCellEventHandler(this.gridTrainingSources_RowEnter);
+            // 
+            // X
+            // 
+            dataGridViewCellStyle2.Format = "#0";
+            dataGridViewCellStyle2.NullValue = null;
+            this.X.DefaultCellStyle = dataGridViewCellStyle2;
+            this.X.HeaderText = "X";
+            this.X.Name = "X";
+            this.X.Width = 26;
+            // 
+            // Y
+            // 
+            dataGridViewCellStyle3.Format = "#0";
+            dataGridViewCellStyle3.NullValue = null;
+            this.Y.DefaultCellStyle = dataGridViewCellStyle3;
+            this.Y.HeaderText = "Y";
+            this.Y.Name = "Y";
+            this.Y.Width = 26;
+            // 
+            // W
+            // 
+            dataGridViewCellStyle4.Format = "#0";
+            dataGridViewCellStyle4.NullValue = null;
+            this.W.DefaultCellStyle = dataGridViewCellStyle4;
+            this.W.HeaderText = "W";
+            this.W.Name = "W";
+            this.W.Width = 26;
+            // 
+            // H
+            // 
+            dataGridViewCellStyle5.Format = "#0";
+            dataGridViewCellStyle5.NullValue = null;
+            this.H.DefaultCellStyle = dataGridViewCellStyle5;
+            this.H.HeaderText = "H";
+            this.H.Name = "H";
+            this.H.Width = 26;
+            // 
+            // Aspect
+            // 
+            dataGridViewCellStyle6.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.Aspect.DefaultCellStyle = dataGridViewCellStyle6;
+            this.Aspect.HeaderText = "AR";
+            this.Aspect.Name = "Aspect";
+            this.Aspect.ReadOnly = true;
+            this.Aspect.Width = 26;
+            // 
             // lblDatabase
             // 
             this.lblDatabase.ForeColor = System.Drawing.Color.White;
@@ -303,6 +389,7 @@
             this.txtDatabase.Name = "txtDatabase";
             this.txtDatabase.Size = new System.Drawing.Size(118, 20);
             this.txtDatabase.TabIndex = 19;
+            this.txtDatabase.TextChanged += new System.EventHandler(this.txtDatabase_TextChanged);
             // 
             // lblSettings
             // 
@@ -402,91 +489,6 @@
             this.btnCollapseSidePanel.UseVisualStyleBackColor = false;
             this.btnCollapseSidePanel.Click += new System.EventHandler(this.btnCollapseSidePanel_Click);
             // 
-            // gridTrainingSources
-            // 
-            this.gridTrainingSources.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.gridTrainingSources.BackgroundColor = System.Drawing.Color.White;
-            this.gridTrainingSources.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.gridTrainingSources.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
-            this.gridTrainingSources.ColumnHeadersHeight = 18;
-            this.gridTrainingSources.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            this.gridTrainingSources.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.X,
-            this.Y,
-            this.W,
-            this.H,
-            this.Aspect});
-            dataGridViewCellStyle7.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle7.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle7.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            dataGridViewCellStyle7.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle7.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.gridTrainingSources.DefaultCellStyle = dataGridViewCellStyle7;
-            this.gridTrainingSources.Location = new System.Drawing.Point(0, 0);
-            this.gridTrainingSources.Name = "gridTrainingSources";
-            this.gridTrainingSources.RowHeadersWidth = 10;
-            this.gridTrainingSources.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
-            this.gridTrainingSources.ShowEditingIcon = false;
-            this.gridTrainingSources.Size = new System.Drawing.Size(140, 90);
-            this.gridTrainingSources.TabIndex = 4;
-            this.gridTrainingSources.CurrentCellDirtyStateChanged += new System.EventHandler(this.gridTrainingSources_CurrentCellDirtyStateChanged);
-            // 
-            // X
-            // 
-            dataGridViewCellStyle2.Format = "#0";
-            dataGridViewCellStyle2.NullValue = null;
-            this.X.DefaultCellStyle = dataGridViewCellStyle2;
-            this.X.HeaderText = "X";
-            this.X.Name = "X";
-            this.X.Width = 26;
-            // 
-            // Y
-            // 
-            dataGridViewCellStyle3.Format = "#0";
-            dataGridViewCellStyle3.NullValue = null;
-            this.Y.DefaultCellStyle = dataGridViewCellStyle3;
-            this.Y.HeaderText = "Y";
-            this.Y.Name = "Y";
-            this.Y.Width = 26;
-            // 
-            // W
-            // 
-            dataGridViewCellStyle4.Format = "#0";
-            dataGridViewCellStyle4.NullValue = null;
-            this.W.DefaultCellStyle = dataGridViewCellStyle4;
-            this.W.HeaderText = "W";
-            this.W.Name = "W";
-            this.W.Width = 26;
-            // 
-            // H
-            // 
-            dataGridViewCellStyle5.Format = "#0";
-            dataGridViewCellStyle5.NullValue = null;
-            this.H.DefaultCellStyle = dataGridViewCellStyle5;
-            this.H.HeaderText = "H";
-            this.H.Name = "H";
-            this.H.Width = 26;
-            // 
-            // Aspect
-            // 
-            dataGridViewCellStyle6.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.Aspect.DefaultCellStyle = dataGridViewCellStyle6;
-            this.Aspect.HeaderText = "AR";
-            this.Aspect.Name = "Aspect";
-            this.Aspect.ReadOnly = true;
-            this.Aspect.Width = 26;
-            // 
             // frmImageTaggerMain
             // 
             this.AllowDrop = true;
@@ -518,12 +520,12 @@
             this.pnlBatch.PerformLayout();
             this.panel1.ResumeLayout(false);
             this.pnlResizableTrainingBounds.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).EndInit();
             this.pnlDatabase.ResumeLayout(false);
             this.pnlDatabase.PerformLayout();
             this.pnlSettings.ResumeLayout(false);
             this.pnlSettings.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numScrollSpeed)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).EndInit();
             this.ResumeLayout(false);
 
         }

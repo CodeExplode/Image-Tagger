@@ -11,13 +11,15 @@ using System.Linq;
 
 // TODO
 // + searches with exclusions, e.g. SourceName, -SourceName_ to find images with the source but not a character name (could have a negative filter)
-// + ideally would only write changes/additions to the database rather than the whole file
-// + group images in database per directory, and load per directory (save a large amount of text space and make it easier to change a directory)
+// + ideally would only write changes/additions to the database rather than the whole file (not such an issue if not auto-saving)
+// + group images by directory in database, and load per directory (save a large amount of text space and make it easier to change a directory)
 //      could also have tags per directory, and select all in a directory easily
+// + duplicate detector
+// + maybe a validate button which will compile a list of all images which no longer exist, and give an option to clear them or potentially
+//   relocate them (scanning in existing directories). Could cache some image info for that and duplicate detection, like file size, resolution
 // + Add gif playback https://stackoverflow.com/a/13486374
-// + maybe shouldn't add new images to database automatically, and gallery should hold cache of unsaved images. Maybe have an 'Add to Database (count)' button
-// + maybe a validate button which will compile a list of all images which no longer exist,and give an option to clear them
-//   or potentially relocate them (scanning in existing directories). Could cache some more imageinfo for that, like file size, resolution
+// + Add webp support
+// + maybe shouldn't add new images to database automatically, and gallery should hold a cache of unsaved images. Maybe have an 'Add to Database (count)' button
 // + allow minimum zoom to at least be the original size of the picture, for small pictures
 // + maybe add an auto-zoom checkbox to settings
 
@@ -152,7 +154,7 @@ namespace ImageTagger
             {
                 //Image imageData = gallery.CurrentImageData();
                 this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({imageData.Size.Width}x{imageData.Size.Height})";
-                TrainingData_Populate();
+                TrainingData_PopulateGrid();
                 if (!chkBatchTag.Checked)
                     DisplayTags();
             }
@@ -205,6 +207,21 @@ namespace ImageTagger
                 //paintEventArgs.Graphics.SetClip(DisplayRectangle);
 
                 paintEventArgs.Graphics.DrawImage(image, imageBounds.X, imageBounds.Y, imageBounds.Width, imageBounds.Height);
+
+                // if the training data grid is visible, draw the bounds for the currenty selected row
+                float[] trainingBounds = DrawableTrainingBounds(image);
+
+                if (trainingBounds.Length == 4)
+                {
+                    Pen glow = new Pen(Color.FromArgb(255/4, 255, 255, 255), 3);
+                    Pen stroke = new Pen(Color.Red, 1);
+                    //paintEventArgs.Graphics.DrawRectangle(glow, trainingBounds[0], trainingBounds[1], trainingBounds[2], trainingBounds[3]); // seems kind of offputting, need to work on it
+                    paintEventArgs.Graphics.DrawRectangle(stroke, trainingBounds[0], trainingBounds[1], trainingBounds[2], trainingBounds[3]);
+                    
+                    // reply on https://stackoverflow.com/q/11238628 claims pens need to be disposed of
+                    glow.Dispose();
+                    stroke.Dispose();
+                }
             }
 
             base.OnPaint(paintEventArgs);
@@ -448,6 +465,11 @@ namespace ImageTagger
             database.Save();
         }
 
+        private void txtDatabase_TextChanged(object sender, EventArgs e)
+        {
+            database.databaseLocation = txtDatabase.Text;
+        }
+
         #endregion
 
 
@@ -577,9 +599,9 @@ namespace ImageTagger
 
         #region TRAINING DATA
 
-        private void TrainingData_Validate(TaggedImage image, Image imageData)
+        private void TrainingData_CreateDefaults(TaggedImage image, Image imageData)
         {
-            // aren't reading images when first loaded into the database (too slow), and so instead populate initial values when need them
+            // not reading images when first loaded into the database (too slow), so instead populate initial selection values when need them
             if (image.selections.Length == 0)
             {
                 Image currentImageData = gallery.CurrentImageData();
@@ -599,12 +621,13 @@ namespace ImageTagger
         {
             pnlResizableTrainingBounds.Visible = !pnlResizableTrainingBounds.Visible;
             lblTrainingData.Text = "Training Sources " + (pnlResizableTrainingBounds.Visible ? "⏶" : "⏷");
+            this.Repaint(); // repaint to add/remove visible selection box
         }
 
-        private void TrainingData_Populate()
+        private void TrainingData_PopulateGrid()
         {
             TaggedImage currentImage = gallery.CurrentImage();
-            TrainingData_Validate(currentImage, gallery.CurrentImageData());
+            TrainingData_CreateDefaults(currentImage, gallery.CurrentImageData());
 
             int[] selections = currentImage.selections;
             
@@ -629,9 +652,9 @@ namespace ImageTagger
             int[] selections = gallery.CurrentImage().selections;
             DataGridViewRowCollection rows = gridTrainingSources.Rows;
 
-            for (int i = 0; i < selections.Length; i += 4)
+            for (int i = 0, j=0; i < selections.Length; i += 4, j++)
             {
-                DataGridViewRow row = rows[i];
+                DataGridViewRow row = rows[j];
 
                 try
                 {
@@ -649,28 +672,83 @@ namespace ImageTagger
             }
         }
 
-        private void gridTrainingSources_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        // getting the active cell's value is difficult while being edited
+        // so pass in the value from the update event on the temporary editing control, will be -1 if empty or invalid (and read the old value which the cell still reports)
+        private void TrainingData_ReadFromGrid(int currentCellValue)
         {
-            int[] selections = gallery.CurrentImage().selections;
-            DataGridViewRowCollection rows = gridTrainingSources.Rows;
+            DataGridViewRowCollection rows = gridTrainingSources.Rows; // has an additional blank 'new' row which must be subtracted on Count checks
+            DataGridViewCell currentCell = (currentCellValue == -1 ? null : gridTrainingSources.CurrentCell);
 
-            // stopping at Count-1 because the empty new row is included
-            for (int i=0, j=0; j<rows.Count-1; j++)
+            // just assign a new selections array each time and write whatever is in the table, don't worry about perfect retaining of data if inputs are messed up
+            int[] selections = new int[(rows.Count - 1) * 4];
+            gallery.CurrentImage().selections = selections;
+
+            for (int i = 0; i < rows.Count - 1; i++)
             {
-                DataGridViewRow row = rows[j];
+                DataGridViewRow row = rows[i];
 
+                for (int j=0; j<4; j++)
+                    selections[i * 4 + j] = (row.Cells[j] == currentCell ? currentCellValue : Util.TryParse(row.Cells[j].Value));
+            }
+
+            TrainingData_UpdateAspectRatios();
+            this.Repaint();
+        }
+
+
+        private void gridTrainingSources_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            // get a proper cell changed event, based on https://stackoverflow.com/a/20440447
+            TextBox tb = (TextBox)e.Control;
+            tb.TextChanged -= cell_TextChanged; // not sure if this is the same instance each time, but remove any previous assignment just in case
+            tb.TextChanged += cell_TextChanged;
+        }
+
+        private void cell_TextChanged(object sender, EventArgs e)
+        {
+            string currentCellText = ((TextBox)sender).Text;
+            int currentCellValue;
+            if (int.TryParse(currentCellText, out currentCellValue) == false)
+                currentCellValue = -1;
+
+            TrainingData_ReadFromGrid(currentCellValue);
+        }
+
+        private void gridTrainingSources_RowEnter(object sender, DataGridViewCellEventArgs e)
+        {
+            this.Repaint(); // draw new bounding box
+        }
+
+        private float[] DrawableTrainingBounds(Image imageData)
+        {
+            if (gridTrainingSources.Visible && gridTrainingSources.Rows.Count > 0)
+            {
                 try
                 {
-                    selections[i++] = int.Parse(row.Cells[0].Value.ToString());
-                    selections[i++] = int.Parse(row.Cells[1].Value.ToString());
-                    selections[i++] = int.Parse(row.Cells[2].Value.ToString());
-                    selections[i++] = int.Parse(row.Cells[3].Value.ToString());
+                    int[] selections = gallery.CurrentImage().selections;
+                    int rowIndex = gridTrainingSources.CurrentCell.RowIndex;
+
+                    float x = selections[rowIndex * 4];
+                    float y = selections[rowIndex * 4 + 1];
+                    float w = selections[rowIndex * 4 + 2];
+                    float h = selections[rowIndex * 4 + 3];
+
+                    if (w > 0 && h > 0)
+                    {
+                        x = imageBounds.X + x * imageBounds.Size.Width / imageData.Size.Width;
+                        y = imageBounds.Y + y * imageBounds.Size.Height / imageData.Size.Height;
+                        w *= imageBounds.Size.Width / imageData.Size.Width;
+                        h *= imageBounds.Size.Height / imageData.Size.Height;
+
+                        return new float[] { x, y, w, h };
+                    }
                 }
                 catch { }
             }
 
-            TrainingData_UpdateAspectRatios();
+            return new float[0];
         }
+
 
         #endregion
 
@@ -725,7 +803,6 @@ namespace ImageTagger
 
 
         #endregion
-
     }
 
     #region DATABASE
@@ -783,8 +860,10 @@ namespace ImageTagger
                 currentImageData = Image.FromFile(currentImage.filepath);
 
                 // naive pruning solution since dictionaries aren't ordered, just wipe the dictionary. Could check for neighbours from this.images list
-                if (this.imageData.Count > max_images_in_memory)
+                if (this.imageData.Count > max_images_in_memory) {
                     this.imageData.Clear();
+                    GC.Collect();
+                }
 
                 this.imageData[currentImage] = currentImageData;
             }
@@ -848,8 +927,8 @@ namespace ImageTagger
                     TaggedImage image = imageTags.Key;
 
                     writetext.WriteLine(image.filepath);
-                    writetext.WriteLine($"{string.Join(",", image.selections)}"); // can't validate these if the image data was never loaded, so python will need to fall back to same implementation
                     writetext.WriteLine($"{string.Join(",", imageTags.Value)}");
+                    writetext.WriteLine($"{string.Join(",", image.selections)}"); // can't validate these if the image data was never loaded, so python will need to fall back to same implementation
                 }
             }
 
@@ -885,16 +964,17 @@ namespace ImageTagger
                     }
                     else if (stage==1)
                     {
-                        image.selections = (line.Split(',').Select(x => int.Parse(x))).ToArray();
-                    }
-                    else
-                    {
                         string[] imageTags = line.Split(',');
                         foreach (string tag in imageTags)
                         {
                             EnsureTagExists(tag);
                             this.tags[tag].Add(image);
                         }
+                    }
+                    else
+                    {
+                        if (line.Length > 0)
+                            image.selections = (line.Split(',').Select(x => int.Parse(x))).ToArray();
                     }
 
                     stage = (stage + 1) % 3;
@@ -1055,6 +1135,18 @@ namespace ImageTagger
             }
 
             return tagWords;
+        }
+
+        public static int TryParse(object obj)
+        {
+            if (obj != null)
+            {
+                int val;
+                if (int.TryParse(obj.ToString(), out val))
+                    return val;
+            }
+
+            return 0;
         }
 
         public class ValidImageChecker
