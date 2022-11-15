@@ -545,6 +545,8 @@ namespace ImageTagger
                 else
                     tags = database.GetSharedImageTags(gallery.images);
 
+            tags.Sort();
+
             // print tagIndices
             string tagsText = "";
 
