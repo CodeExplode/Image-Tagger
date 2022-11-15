@@ -99,9 +99,10 @@ namespace ImageTagger
                 List<TaggedImage> images = database.GetImageInfo(filenames, true);
                 if (images.Count> 0)
                 {
+                    txtFilter.Clear();
                     bool isBatch = images.Count > 1 || inBatchMode;
                     bool clearGallery = !isBatch || !inBatchMode;
-                    AddToGallery(images, clearGallery, isBatch);
+                    AddToGallery(images, clearGallery, isBatch, true);
                 }
                 RefreshDatabaseCountLabel();
             }
@@ -112,13 +113,13 @@ namespace ImageTagger
         
         #region GALLERY
 
-        private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch)
+        private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch, bool fromDrop)
         {
             gallery.AddImages(images, clearGallery);
             SetBatchMode(isBatch);
             ClearFocus();
             gallery.index = (images.Count == 0 ? 0 : gallery.images.IndexOf(images[0]));
-            ImageChanged();
+            ImageChanged(fromDrop);
         }
 
         private void ScrollGallery(bool toRight)
@@ -134,7 +135,7 @@ namespace ImageTagger
             else if (gallery.index >= gallerySize)
                 gallery.index = 0;
 
-            ImageChanged();
+            ImageChanged(false);
 
             // allow clicks and key presses in fullscreen to scroll the gallery
             if (timerSlideshow.Enabled)
@@ -144,7 +145,7 @@ namespace ImageTagger
             }
         }
 
-        private void ImageChanged()
+        private void ImageChanged(bool fromDrop)
         {
             this.zoom = 1f;
             this.pan.X = 0;
@@ -161,7 +162,7 @@ namespace ImageTagger
                 //Image imageData = gallery.CurrentImageData();
                 this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({imageData.Size.Width}x{imageData.Size.Height})";
                 TrainingData_PopulateGrid(false);
-                if (!chkBatchTag.Checked)
+                if (!chkBatchTag.Checked || fromDrop)
                     DisplayTags();
             }
 
@@ -623,6 +624,10 @@ namespace ImageTagger
 
         private void txtFilter_TextChanged(object sender, EventArgs e)
         {
+            // determine if changed by user or code
+            if (!((RichTextBox)sender).Modified)
+                return;
+
             if (timerFilterCooldown.Enabled)
                 timerFilterCooldown.Stop();
 
@@ -634,10 +639,15 @@ namespace ImageTagger
         {
             timerFilterCooldown.Enabled = false;
 
+            BuildGalleryFromFilter();
+        }
+
+        private void BuildGalleryFromFilter()
+        {
             List<string> tagWords = Util.ParseTagText(txtFilter.Text);
             List<TaggedImage> newGallery = database.GetFilteredImages(tagWords, true);
 
-            AddToGallery(newGallery, true, false);
+            AddToGallery(newGallery, true, false, false);
         }
 
         #endregion
