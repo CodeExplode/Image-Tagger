@@ -165,7 +165,7 @@ namespace ImageTagger
                 //Image imageData = gallery.CurrentImageData();
                 this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({imageData.Size.Width}x{imageData.Size.Height})";
                 TrainingData_PopulateGrid(false);
-                if (!chkBatchTag.Checked || fromDrop)
+                if (!(this.inBatchMode && chkBatchTag.Checked) || fromDrop)
                     DisplayTags();
             }
 
@@ -542,6 +542,8 @@ namespace ImageTagger
 
             if (inBatchMode)
                 chkBatchTag.Text = $"Batch Tag ({gallery.images.Count})";
+            else
+                chkBatchTag.Checked = false; // ensure isn't accidentally read without checking for whether in batch mdoe
         }
 
         private void btnExitBatch_Click(object sender, EventArgs e)
@@ -564,10 +566,10 @@ namespace ImageTagger
             List<string> tags = new List<string>();
 
             if (gallery.images.Count > 0)
-                if (!chkBatchTag.Checked)
-                    tags = database.GetImageTags(gallery.CurrentImage());
-                else
+                if (this.inBatchMode && chkBatchTag.Checked)
                     tags = database.GetSharedImageTags(gallery.images);
+                else
+                    tags = database.GetImageTags(gallery.CurrentImage());
 
             tags.Sort();
 
@@ -583,7 +585,7 @@ namespace ImageTagger
         private void txtTags_Leave(object sender, EventArgs e)
         {
             if (gallery.images.Count == 0) return;
-            TaggedImage currentImage = (chkBatchTag.Checked ? null : gallery.CurrentImage());
+            TaggedImage currentImage = (this.inBatchMode && chkBatchTag.Checked ? null : gallery.CurrentImage());
 
             List<string> tagWords = Util.ParseTagText(txtTags.Text);
 
@@ -595,7 +597,7 @@ namespace ImageTagger
                 List<TaggedImage> imagesForTag = tagImages.Value;
                 bool validTag = tagWords.Contains(tagImages.Key);
 
-                if (chkBatchTag.Checked)
+                if (this.inBatchMode && chkBatchTag.Checked)
                 {
                     if (validTag)
                         Util.AddNewElements(imagesForTag, gallery.images);
@@ -612,7 +614,7 @@ namespace ImageTagger
             }
 
             // remove any tags which all the batch items have, but which aren't in the text set (means was manually removed from the list)
-            if (chkBatchTag.Checked)
+            if (this.inBatchMode && chkBatchTag.Checked)
             {
                 List<string> sharedTags = database.GetSharedImageTags(gallery.images);
                 IEnumerable<string> invalidBatchTags = sharedTags.Except(tagWords);
