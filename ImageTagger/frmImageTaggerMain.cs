@@ -76,6 +76,7 @@ namespace ImageTagger
 
             database = new ImageTaggerDatabase();
             database.Load(txtDatabase.Text, false);
+            RefreshDatabaseCountLabel();
             gallery = new Gallery(database);
 
             SetBatchMode(false);
