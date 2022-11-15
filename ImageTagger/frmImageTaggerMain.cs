@@ -102,7 +102,7 @@ namespace ImageTagger
                     txtFilter.Clear();
                     bool isBatch = images.Count > 1 || inBatchMode;
                     bool clearGallery = !isBatch || !inBatchMode;
-                    AddToGallery(images, clearGallery, isBatch, true);
+                    AddToGallery(images, clearGallery, isBatch, "drop");
                 }
                 RefreshDatabaseCountLabel();
             }
@@ -113,14 +113,15 @@ namespace ImageTagger
         
         #region GALLERY
 
-        private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch, bool fromDrop)
+        private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch, string source)
         {
             gallery.AddImages(images, clearGallery);
             SetBatchMode(isBatch);
-            ClearFocus();
+            if (source != "filter")
+                ClearFocus();
             lblFilter.Text = "Filter" + (gallery.images.Count > 0 ? $"({gallery.images.Count})" : "");
             gallery.index = (images.Count == 0 ? 0 : gallery.images.IndexOf(images[0]));
-            ImageChanged(fromDrop);
+            ImageChanged(source == "drop");
         }
 
         private void ScrollGallery(bool toRight)
@@ -647,7 +648,7 @@ namespace ImageTagger
         {
             List<string> tagWords = Util.ParseTagText(txtFilter.Text);
             List<TaggedImage> newGallery = database.GetFilteredImages(tagWords, true);
-            AddToGallery(newGallery, true, false, false);
+            AddToGallery(newGallery, true, false, "filter");
         }
 
         #endregion
