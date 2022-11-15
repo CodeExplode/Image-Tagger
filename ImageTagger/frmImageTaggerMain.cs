@@ -118,6 +118,7 @@ namespace ImageTagger
             gallery.AddImages(images, clearGallery);
             SetBatchMode(isBatch);
             ClearFocus();
+            lblFilter.Text = "Filter" + (gallery.images.Count > 0 ? $"({gallery.images.Count})" : "");
             gallery.index = (images.Count == 0 ? 0 : gallery.images.IndexOf(images[0]));
             ImageChanged(fromDrop);
         }
@@ -646,7 +647,6 @@ namespace ImageTagger
         {
             List<string> tagWords = Util.ParseTagText(txtFilter.Text);
             List<TaggedImage> newGallery = database.GetFilteredImages(tagWords, true);
-
             AddToGallery(newGallery, true, false, false);
         }
 
@@ -754,7 +754,7 @@ namespace ImageTagger
                 DataGridViewRow row = rows[i];
 
                 for (int j=0; j<4; j++)
-                    selections[i * 4 + j] = (row.Cells[j] == currentCell ? currentCellValue : Util.TryParse(row.Cells[j].Value));
+                    selections[i * 4 + j] = (row.Cells[j] == currentCell ? currentCellValue : Util.TryParseInt(row.Cells[j].Value));
             }
 
             TrainingData_UpdateAspectRatios();
@@ -1325,6 +1325,12 @@ namespace ImageTagger
 
     internal static class Util
     {
+        public static int GreatestCommonDivisor(int a, int b)
+        {
+            // https://stackoverflow.com/a/1186465
+            return (b == 0) ? a : GreatestCommonDivisor(b, a % b);
+        }
+
         public static Control FindFocusedControl(Control control)
         {
             // https://stackoverflow.com/a/439606
@@ -1337,10 +1343,10 @@ namespace ImageTagger
             return control;
         }
 
-        public static void PruneToSharedEntries<T>(List<T> list, List<T> secondary)
+        public static void PruneToSharedEntries<T>(List<T> list, List<T> entries)
         {
             // https://stackoverflow.com/a/4066127
-            list.RemoveAll(item => !secondary.Contains(item));
+            list.RemoveAll(item => !entries.Contains(item));
         }
 
         public static bool ContainsAll<T>(IEnumerable<T> source, IEnumerable<T> values)
@@ -1378,7 +1384,7 @@ namespace ImageTagger
             return tagWords;
         }
 
-        public static int TryParse(object obj)
+        public static int TryParseInt(object obj)
         {
             if (obj != null)
             {
@@ -1466,65 +1472,6 @@ namespace ImageTagger
         public static bool IsInsideRect(float x, float y, float x1, float y1, float x2, float y2)
         {
             return x >= x1 && x <= x2 && y >= y1 && y <= y2;
-        }
-
-        public static int GreatestCommonDivisor(int a, int b)
-        {
-            // https://stackoverflow.com/a/1186465
-            return (b == 0) ? a : GreatestCommonDivisor(b, a % b);
-        }
-
-        public static void SnapToAspectRatio(ref int x, ref int y, ref int w, ref int h, int maxW, int maxH, int deltaX, int deltaY, bool movedLeft, bool movedTop)
-        {
-            // don't handle diagonal snapping, movements will be small enough that there's probably no benefit
-            if (deltaX != 0 && deltaY != 0)
-            {
-                if (Math.Abs(deltaX) > Math.Abs(deltaY)) deltaY = 0;
-                else deltaX = 0;
-            }
-
-            if (deltaX != 0)
-            {
-                SnapSideToAspectRatio(ref x, ref w, maxW, h, movedLeft);
-            }
-            else
-            {
-                SnapSideToAspectRatio(ref y, ref h, maxH, w, movedTop);
-            }
-
-        }
-
-        public static void SnapSideToAspectRatio(ref int start, ref int length, int maxLength, int otherLength, bool startSide)
-        {
-            if (otherLength == 0) return;
-            double stepping = otherLength / (double)64;
-            int nextL = (int)Math.Round(stepping * Math.Ceiling(length / stepping));
-            int prevL = (int)Math.Round(stepping * Math.Floor(length / stepping));
-
-            if (startSide)
-            {
-                int end = start + length;
-                if (end - prevL < 0) prevL = int.MaxValue; // would put x/y below 0
-                if (start + nextL > end) nextL = int.MaxValue; // would put x/y past right/bottom of selection
-
-                if (prevL != int.MaxValue || nextL != int.MaxValue)
-                {
-                    int newStart = end - (Math.Abs(start - prevL) < Math.Abs(start - nextL) ? prevL : nextL);
-                    
-                    if (newStart != start)
-                        length -= newStart - start;
-
-                    start = newStart;
-                }
-            }
-            else
-            {
-                if (prevL <= 0) prevL = int.MaxValue; // would be negative width/height
-                if (start + nextL > maxLength) nextL = int.MaxValue; // would put the right/bottom outside of the image
-
-                if (prevL != int.MaxValue || nextL != int.MaxValue)
-                    length = (Math.Abs(start - prevL) < Math.Abs(start - nextL) ? prevL : nextL);
-            }
         }
 
         public class ValidImageChecker
