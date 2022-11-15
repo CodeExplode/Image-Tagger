@@ -11,6 +11,8 @@ using System.Linq;
 
 // TODO
 // + searches with exclusions, e.g. SourceName, -SourceName_ to find images with the source but not a character name (could have a negative filter)
+// + searching by image properties such as resolution (not possible currently unless can read that quickly on import, maybe can set selection then too)
+//   https://stackoverflow.com/a/112711   https://stackoverflow.com/a/9687096   https://stackoverflow.com/a/111349  https://gist.github.com/dejanstojanovic/c5df7310174b570c16bc
 // + ideally would only write changes/additions to the database rather than the whole file (not such an issue if not auto-saving)
 // + group images by directory in database, and load per directory (save a large amount of text space and make it easier to change a directory)
 //      could also have tags per directory, and select all in a directory easily
@@ -22,6 +24,7 @@ using System.Linq;
 // + maybe shouldn't add new images to database automatically, and gallery should hold a cache of unsaved images. Maybe have an 'Add to Database (count)' button
 // + allow minimum zoom to at least be the original size of the picture, for small pictures
 // + maybe add an auto-zoom checkbox to settings
+// + undo/redo on selection sizing
 
 namespace ImageTagger
 {
@@ -43,6 +46,9 @@ namespace ImageTagger
         Point zoomCursor = new Point(int.MinValue, 0); // record cursor pos when setting a zoom target so know if it's moved
         PointF zoomTarget = new PointF(0, 0); // zoom target as image width/height percent, will move pan towards a little with each zoom scroll
 
+        enum TrainingAreaDragMode { none, centre, left, right, top, bottom, cornerTL, cornerTR, cornerBL, cornerBR };
+        TrainingAreaDragMode trainingDragMode = TrainingAreaDragMode.none;
+        int[] trainingDragBounds = new int[4]; // rather than try to add mouse delta each motion, do a delta from the original size
 
         public frmImageTaggerMain()
         {
@@ -104,7 +110,7 @@ namespace ImageTagger
 
         #endregion
 
-
+        
         #region GALLERY
 
         private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch)
@@ -155,7 +161,7 @@ namespace ImageTagger
             {
                 //Image imageData = gallery.CurrentImageData();
                 this.Text = Path.GetFileName(gallery.CurrentImage().filepath); // + $" ({imageData.Size.Width}x{imageData.Size.Height})";
-                TrainingData_PopulateGrid();
+                TrainingData_PopulateGrid(false);
                 if (!chkBatchTag.Checked)
                     DisplayTags();
             }
@@ -328,7 +334,7 @@ namespace ImageTagger
 
         #region INPUTS
 
-        private bool UIInputFocused()
+        private bool IsInputControlFocused()
         {
             Control focusedControl = Util.FindFocusedControl(this);
             return (focusedControl is TextBox || focusedControl is RichTextBox || focusedControl is DataGridView);
@@ -336,7 +342,7 @@ namespace ImageTagger
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            bool inputFocused = UIInputFocused();
+            bool inputFocused = IsInputControlFocused();
 
             if (!inputFocused)
             {
@@ -347,15 +353,11 @@ namespace ImageTagger
                 }
 
                 if (keyData == Keys.Space)
-                {
                     ToggleSlideshow();
-                }
 
                 // should really have a flag for in slideshow rather than check this way
                 if (keyData == Keys.Escape && this.FormBorderStyle == FormBorderStyle.None)
-                {
                     ToggleSlideshow();
-                }
             }
 
             return base.ProcessCmdKey(ref msg, keyData); // https://stackoverflow.com/a/34168026
@@ -364,13 +366,36 @@ namespace ImageTagger
         private void form_MouseDown(object sender, MouseEventArgs e)
         {
             mouseDownAt = e.Location;
+
+            TrainingAreaDragMode mode = CheckTrainingBoxCursor(e.Location.X, e.Location.Y);
+            if (mode != TrainingAreaDragMode.none)
+                StartTrainingDrag(mode);
         }
 
         private void form_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
-                DoPan(e.Location.X - lastCursor.X, e.Location.Y - lastCursor.Y, false);
+                if (trainingDragMode == TrainingAreaDragMode.none)
+                    DoPan(e.Location.X - lastCursor.X, e.Location.Y - lastCursor.Y, false);
+                else {
+                    bool altKey = (Control.ModifierKeys & Keys.Alt) != 0; // https://stackoverflow.com/a/13941232
+                    DragTrainingBounds(e.Location.X - mouseDownAt.X, e.Location.Y - mouseDownAt.Y, !altKey);
+                }
+            }
+            else
+            {
+                Cursor cursor = Cursors.Default;
+
+                TrainingAreaDragMode mode = CheckTrainingBoxCursor(e.Location.X, e.Location.Y);
+
+                if (mode == TrainingAreaDragMode.left || mode == TrainingAreaDragMode.right) cursor = Cursors.SizeWE;
+                else if (mode == TrainingAreaDragMode.top || mode == TrainingAreaDragMode.bottom) cursor = Cursors.SizeNS;
+                else if (mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerBR) cursor = Cursors.SizeNWSE;
+                else if (mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBL) cursor = Cursors.SizeNESW;
+                //else if (mode == TrainingAreaDragMode.centre) cursor = Cursors.SizeAll; // seems obstructive
+
+                this.Cursor = cursor;
             }
 
             lastCursor = e.Location;
@@ -378,6 +403,11 @@ namespace ImageTagger
 
         private void form_MouseUp(object sender, MouseEventArgs e)
         {
+            if (trainingDragMode != TrainingAreaDragMode.none)
+            {
+                trainingDragMode = TrainingAreaDragMode.none;
+            }
+            
             // only consider it a click if the image wasn't dragged (could replace with doneDrag)
             if (Math.Abs(e.Location.X - mouseDownAt.X) < 1 && Math.Abs(e.Location.Y - mouseDownAt.Y) < 1)
             {
@@ -390,7 +420,6 @@ namespace ImageTagger
                     ScrollGallery(false);
             }
         }
-
 
         private void form_MouseEnter(object sender, EventArgs e)
         {
@@ -592,9 +621,9 @@ namespace ImageTagger
         #endregion
 
 
-        #region TRAINING DATA
+        #region TRAINING AREA
 
-        private void TrainingData_CreateDefaults(TaggedImage image, Image imageData)
+        private void TrainingData_EnsureDefaults(TaggedImage image, Image imageData)
         {
             // not reading images when first loaded into the database (too slow), so instead populate initial selection values when need them
             if (image.selections.Length == 0)
@@ -620,13 +649,16 @@ namespace ImageTagger
             this.Repaint(); // repaint to add/remove visible selection box
         }
 
-        private void TrainingData_PopulateGrid()
+        private void TrainingData_PopulateGrid(bool maintainPosition)
         {
             TaggedImage currentImage = gallery.CurrentImage();
-            TrainingData_CreateDefaults(currentImage, gallery.CurrentImageData());
+            TrainingData_EnsureDefaults(currentImage, gallery.CurrentImageData());
 
             int[] selections = currentImage.selections;
-            
+
+            int posRow = (maintainPosition ? gridTrainingSources.CurrentCell.RowIndex : 0);
+            int posCol = (maintainPosition ? gridTrainingSources.CurrentCell.ColumnIndex : 0);
+
             gridTrainingSources.Rows.Clear();
 
             for (int i = 0; i < selections.Length; i += 4)
@@ -638,6 +670,11 @@ namespace ImageTagger
                 row.Cells[2].Value = selections[i + 2];
                 row.Cells[3].Value = selections[i + 3];
                 gridTrainingSources.Rows.Add(row);
+            }
+
+            if (maintainPosition)
+            {
+                gridTrainingSources.CurrentCell = gridTrainingSources[posCol, posRow];
             }
 
             TrainingData_UpdateAspectRatios();
@@ -692,16 +729,15 @@ namespace ImageTagger
             this.Repaint();
         }
 
-
         private void gridTrainingSources_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
         {
             // get a proper cell changed event, based on https://stackoverflow.com/a/20440447
             TextBox tb = (TextBox)e.Control;
-            tb.TextChanged -= cell_TextChanged; // not sure if this is the same instance each time, but remove any previous assignment just in case
-            tb.TextChanged += cell_TextChanged;
+            tb.TextChanged -= gridTrainingCell_TextChanged; // not sure if this is the same instance each time, but remove any previous assignment just in case
+            tb.TextChanged += gridTrainingCell_TextChanged;
         }
 
-        private void cell_TextChanged(object sender, EventArgs e)
+        private void gridTrainingCell_TextChanged(object sender, EventArgs e)
         {
             string currentCellText = ((TextBox)sender).Text;
             int currentCellValue;
@@ -718,7 +754,7 @@ namespace ImageTagger
 
         private float[] DrawableTrainingBounds(Image imageData)
         {
-            if (gridTrainingSources.Visible && gridTrainingSources.Rows.Count > 0)
+            if (imageData!=null && gridTrainingSources.Visible && gridTrainingSources.Rows.Count > 0)
             {
                 try
                 {
@@ -746,6 +782,171 @@ namespace ImageTagger
             return new float[0];
         }
 
+        private TrainingAreaDragMode CheckTrainingBoxCursor(int mX, int mY)
+        {
+            TrainingAreaDragMode mode = TrainingAreaDragMode.none;
+
+            float[] trainingBounds = DrawableTrainingBounds(gallery.CurrentImageData());
+            if (trainingBounds.Length == 4)
+            {
+                float x = trainingBounds[0];
+                float y = trainingBounds[1];
+                float w = trainingBounds[2];
+                float h = trainingBounds[3];
+
+                int cornerRange = 30;
+                int edgeRange = 10;
+
+                if (Util.Dist(mX, mY, x, y) < cornerRange) mode = TrainingAreaDragMode.cornerTL;
+                else if (Util.Dist(mX, mY, x + w, y) < cornerRange) mode = TrainingAreaDragMode.cornerTR;
+                else if (Util.Dist(mX, mY, x, y + h) < cornerRange) mode = TrainingAreaDragMode.cornerBL;
+                else if (Util.Dist(mX, mY, x + w, y + h) < cornerRange) mode = TrainingAreaDragMode.cornerBR;
+                else if (Util.DistToLineSegment(mX, mY, x, y, x + w, y) < edgeRange) mode = TrainingAreaDragMode.top;
+                else if (Util.DistToLineSegment(mX, mY, x, y + h, x + w, y + h) < edgeRange) mode = TrainingAreaDragMode.bottom;
+                else if (Util.DistToLineSegment(mX, mY, x, y, x, y + h) < edgeRange) mode = TrainingAreaDragMode.left;
+                else if (Util.DistToLineSegment(mX, mY, x + w, y, x + w, y + h) < edgeRange) mode = TrainingAreaDragMode.right;
+                else if (Util.IsInsideRect(mX, mY, x, y, x + w, y + h)) mode = TrainingAreaDragMode.centre;
+            }
+
+            return mode;
+        }
+
+        private void StartTrainingDrag(TrainingAreaDragMode mode)
+        {
+            this.trainingDragMode = mode;
+
+            // cache original training area to do edits with each frame, to make dragging feel better, rather than applying deltas
+            int rowIndex = gridTrainingSources.CurrentCell.RowIndex;
+            int[] selections = gallery.CurrentImage().selections;
+            Array.Copy(selections, rowIndex * 4, trainingDragBounds, 0, 4);
+        }
+
+        private void DragTrainingBounds(int deltaX, int deltaY, bool diagonalsMaintainAspect)
+        {
+            // account for how the image is currently scaled to the screen
+            Image image = gallery.CurrentImageData();
+            int imgW = image.Size.Width;
+            int imgH = image.Size.Height;
+            deltaX = (int)(deltaX / (imageBounds.Width / imgW));
+            deltaY = (int)(deltaY / (imageBounds.Height / imgH));
+
+            int[] selections = gallery.CurrentImage().selections;
+            int rowIndex = gridTrainingSources.CurrentCell.RowIndex;
+
+            int x = trainingDragBounds[0];
+            int y = trainingDragBounds[1];
+            int w = trainingDragBounds[2];
+            int h = trainingDragBounds[3];
+
+            TrainingAreaDragMode mode = this.trainingDragMode; // just to shorten code
+
+            if (mode == TrainingAreaDragMode.centre)
+            {
+                x += deltaX;
+                y += deltaY;
+
+                x = Math.Max(x, 0);
+                y = Math.Max(y, 0);
+                x = Math.Min(x, imgW - w);
+                y = Math.Min(y, imgH - h);
+            }
+
+            // probably not the best way to do this, but it works for now
+            if (diagonalsMaintainAspect && (mode==TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR))
+            {
+                int gcd = Util.GreatestCommonDivisor(w, h);
+                int widthIntervals = w / gcd;
+                int heightIntervals = h / gcd;
+
+                bool useHoriz = Math.Abs(deltaX) > Math.Abs(deltaY);
+                int steps = (int)(useHoriz ? Math.Abs(Math.Round(deltaX / (double)widthIntervals)) : Math.Abs(Math.Round(deltaY / (double)heightIntervals)));
+                bool posX = deltaX > 0;
+                bool posY = deltaY > 0;
+
+                if (mode == TrainingAreaDragMode.cornerTL)
+                {
+                    if (useHoriz) posY = (deltaX > 0); else posX = (deltaY > 0);
+                    
+                    if (!posX || !posY) steps = Math.Min(steps, Math.Min(x / widthIntervals, y / heightIntervals));
+                }
+                else if (mode == TrainingAreaDragMode.cornerBR)
+                {
+                    if (useHoriz) posY = (deltaX > 0); else posX = (deltaY > 0);
+
+                    if (posX || posY) steps = Math.Min(steps, Math.Min((imgW - x - w) / widthIntervals, (imgH - y - h) / heightIntervals));
+                }
+                else if (mode == TrainingAreaDragMode.cornerTR)
+                {
+                    if (useHoriz) posY = (deltaX < 0); else posX = (deltaY < 0);
+
+                    if (posX || !posY) steps = Math.Min(steps, Math.Min((imgW - x - w) / widthIntervals, y / heightIntervals));
+                }
+                else if (mode == TrainingAreaDragMode.cornerBL)
+                {
+                    if (useHoriz) posY = (deltaX < 0); else posX = (deltaY < 0);
+
+                    if (!posX || posY) steps = Math.Min(steps, Math.Min(x / widthIntervals, (imgH - y - h) / heightIntervals));
+                }
+
+                deltaX = steps * widthIntervals * (posX ? 1 : -1);
+                deltaY = steps * heightIntervals * (posY ? 1 : -1);
+            }
+
+
+            if (mode == TrainingAreaDragMode.left || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerBL)
+            {
+                deltaX = Math.Max(deltaX, 0-x);
+
+                x += deltaX;
+                w -= deltaX;
+            }
+
+            if (mode == TrainingAreaDragMode.right || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBR)
+            {
+                deltaX = Math.Min(deltaX, imgW-(x+w));
+
+                w += deltaX;
+            }
+
+            if (mode == TrainingAreaDragMode.top || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR)
+            {
+                deltaY = Math.Max(deltaY, 0 - y);
+
+                y += deltaY;
+                h -= deltaY;
+            }
+
+            if (mode == TrainingAreaDragMode.bottom ||mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR)
+            {
+                deltaY = Math.Min(deltaY, imgH - (y+h));
+
+                h += deltaY;
+            }
+
+            /*// old snapping to valid SD aspect ratios for all images, not very useful it turns out
+            if (snapping && mode != TrainingAreaDragMode.centre)
+            {
+                bool left = (mode == TrainingAreaDragMode.left || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerBL);
+                bool top = (mode == TrainingAreaDragMode.top || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR);
+
+                int xMove = left ? (x - selections[rowIndex * 4]) : (w - selections[rowIndex * 4 + 2]);
+                int yMove = top ? (y - selections[rowIndex * 4 + 1]) : (h - selections[rowIndex * 4 + 3]);
+
+                if (xMove != 0 || yMove != 0)
+                    Util.SnapToAspectRatio(ref x, ref y, ref w, ref h, imgW, imgH, xMove, yMove, left, top);
+            }*/
+
+            if (w != 0 && h != 0)
+            {
+                selections[rowIndex * 4] = x;
+                selections[rowIndex * 4 + 1] = y;
+                selections[rowIndex * 4 + 2] = w;
+                selections[rowIndex * 4 + 3] = h;
+            }
+
+            TrainingData_PopulateGrid(true);
+            Repaint();
+        }
 
         #endregion
 
@@ -1084,12 +1285,6 @@ namespace ImageTagger
 
     internal static class Util
     {
-        public static int GreatestCommonDivisor(int a, int b)
-        {
-            // https://stackoverflow.com/a/1186465
-            return (b == 0) ? a : GreatestCommonDivisor(b, a % b);
-        }
-
         public static Control FindFocusedControl(Control control)
         {
             // https://stackoverflow.com/a/439606
@@ -1179,6 +1374,117 @@ namespace ImageTagger
                 return text + (text.EndsWith(" ") ? "" : " ") + with;
 
             return text.Replace(replace, with);
+        }
+
+        public static double Dist(double x1, double y1, double x2, double y2)
+        {
+            return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
+        }
+
+        public static double DistToLineSegment(double x, double y, double x1, double y1, double x2, double y2, double from=0, double to=1)
+        {
+            if (from != 0 || to != 1)
+            {
+                double newX1 = x1 + (x2 - x1) * from;
+                double newY1 = y1 + (y2 - y1) * from;
+                double newX2 = x1 + (x2 - x1) * to;
+                double newY2 = y1 + (y2 - y1) * to;
+
+                x1 = newX1;
+                y1 = newY1;
+                x2 = newX2;
+                y2 = newY2;
+            }
+
+            // adapted from: https://www.geeksforgeeks.org/minimum-distance-from-a-point-to-the-line-segment-using-vectors/
+            double lenX = x2 - x1;
+            double lenY = y2 - y1;
+            double dx2 = x - x2;
+            double dy2 = y - y2;
+            double dx1 = x - x1;
+            double dy1 = y - y1;
+
+            // Calculating the dot product
+            double dot2 = (lenX * dx2 + lenY * dy2);
+            double dot1 = (lenX * dx1 + lenY * dy1);
+
+            double dist = 0;
+
+            if (dot2 > 0)
+                dist = Dist(x, y, x2, y2);
+            else if (dot1 < 0)
+                dist = Dist(x, y, x1, y1);
+            else
+            {
+                // Finding the perpendicular distance
+                double mod = Math.Sqrt(lenX * lenX + lenY * lenY);
+                dist = Math.Abs(lenX * dy1 - lenY * dx1) / (mod != 0 ? mod : 1);
+            }
+            return dist;
+        }
+
+        public static bool IsInsideRect(float x, float y, float x1, float y1, float x2, float y2)
+        {
+            return x >= x1 && x <= x2 && y >= y1 && y <= y2;
+        }
+
+        public static int GreatestCommonDivisor(int a, int b)
+        {
+            // https://stackoverflow.com/a/1186465
+            return (b == 0) ? a : GreatestCommonDivisor(b, a % b);
+        }
+
+        public static void SnapToAspectRatio(ref int x, ref int y, ref int w, ref int h, int maxW, int maxH, int deltaX, int deltaY, bool movedLeft, bool movedTop)
+        {
+            // don't handle diagonal snapping, movements will be small enough that there's probably no benefit
+            if (deltaX != 0 && deltaY != 0)
+            {
+                if (Math.Abs(deltaX) > Math.Abs(deltaY)) deltaY = 0;
+                else deltaX = 0;
+            }
+
+            if (deltaX != 0)
+            {
+                SnapSideToAspectRatio(ref x, ref w, maxW, h, movedLeft);
+            }
+            else
+            {
+                SnapSideToAspectRatio(ref y, ref h, maxH, w, movedTop);
+            }
+
+        }
+
+        public static void SnapSideToAspectRatio(ref int start, ref int length, int maxLength, int otherLength, bool startSide)
+        {
+            if (otherLength == 0) return;
+            double stepping = otherLength / (double)64;
+            int nextL = (int)Math.Round(stepping * Math.Ceiling(length / stepping));
+            int prevL = (int)Math.Round(stepping * Math.Floor(length / stepping));
+
+            if (startSide)
+            {
+                int end = start + length;
+                if (end - prevL < 0) prevL = int.MaxValue; // would put x/y below 0
+                if (start + nextL > end) nextL = int.MaxValue; // would put x/y past right/bottom of selection
+
+                if (prevL != int.MaxValue || nextL != int.MaxValue)
+                {
+                    int newStart = end - (Math.Abs(start - prevL) < Math.Abs(start - nextL) ? prevL : nextL);
+                    
+                    if (newStart != start)
+                        length -= newStart - start;
+
+                    start = newStart;
+                }
+            }
+            else
+            {
+                if (prevL <= 0) prevL = int.MaxValue; // would be negative width/height
+                if (start + nextL > maxLength) nextL = int.MaxValue; // would put the right/bottom outside of the image
+
+                if (prevL != int.MaxValue || nextL != int.MaxValue)
+                    length = (Math.Abs(start - prevL) < Math.Abs(start - nextL) ? prevL : nextL);
+            }
         }
 
         public class ValidImageChecker
