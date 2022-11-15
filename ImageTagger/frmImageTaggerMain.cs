@@ -100,7 +100,12 @@ namespace ImageTagger
                 List<TaggedImage> images = database.GetImageInfo(filenames, true);
                 if (images.Count> 0)
                 {
+                    // important - this will force recording the tags if the textbox hasn't been left yet
+                    // and will ensure the textbox isn't focused when new images load and unfocus it, triggering a write of tags
+                    ClearFocus();
+                    //txtTags.Clear(); // not needed since ClearFocus and ImageChanged will ensure correct handling
                     txtFilter.Clear();
+                    // TODO save training region? probably already is
                     bool isBatch = images.Count > 1 || inBatchMode;
                     bool clearGallery = !isBatch || !inBatchMode;
                     AddToGallery(images, clearGallery, isBatch, "drop");
@@ -118,11 +123,12 @@ namespace ImageTagger
         {
             gallery.AddImages(images, clearGallery);
             SetBatchMode(isBatch);
-            if (source != "filter")
-                ClearFocus();
             lblFilter.Text = "Filter" + (gallery.images.Count > 0 ? $"({gallery.images.Count})" : "");
             gallery.index = (images.Count == 0 ? 0 : gallery.images.IndexOf(images[0]));
             ImageChanged(source == "drop");
+
+            if (source != "filter")
+                ClearFocus();
         }
 
         private void ScrollGallery(bool toRight)
@@ -606,6 +612,11 @@ namespace ImageTagger
         }
         
         private void txtTags_Leave(object sender, EventArgs e)
+        {
+            ApplyTags();
+        }
+
+        private void ApplyTags()
         {
             if (gallery.images.Count == 0) return;
             TaggedImage currentImage = (this.inBatchMode && chkBatchTag.Checked ? null : gallery.CurrentImage());
