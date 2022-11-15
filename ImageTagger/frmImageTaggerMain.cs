@@ -507,22 +507,45 @@ namespace ImageTagger
 
         private void btnSaveDatabase_Click(object sender, EventArgs e)
         {
+            SaveDatabase();
+        }
+
+        private void frmImageTaggerMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            var confirmResult = MessageBox.Show("Save before exit?", "Save?", MessageBoxButtons.YesNoCancel);
+
+            if (confirmResult == DialogResult.Cancel)
+            {
+                e.Cancel = true;
+            }
+            else if (confirmResult == DialogResult.Yes)
+            {
+                bool saved = SaveDatabase();
+                if (!saved)
+                    e.Cancel = true;
+            }
+        }
+
+        private bool SaveDatabase()
+        {
             if (txtDatabase.Text != database.loadedFrom && File.Exists(txtDatabase.Text))
             {
                 string warning = $"Replace {txtDatabase.Text}";
-                
+
                 if (database.loadedFrom.Length > 0) warning += $" with this database loaded from {database.loadedFrom}";
-                else  warning += " with this new database";
+                else warning += " with this new database";
 
                 warning += $" which contains {database.images.Count} images?";
 
                 var confirmResult = MessageBox.Show(warning, "Replace File?", MessageBoxButtons.YesNo);
 
                 if (confirmResult == DialogResult.No)
-                    return;
+                    return false;
             }
 
             database.Save(txtDatabase.Text);
+
+            return true;
         }
 
         #endregion
@@ -1046,6 +1069,7 @@ namespace ImageTagger
 
 
         #endregion
+
     }
 
     #region DATABASE

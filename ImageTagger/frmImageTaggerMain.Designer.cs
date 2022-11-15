@@ -504,6 +504,7 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Image Tagger";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmImageTaggerMain_FormClosing);
             this.Load += new System.EventHandler(this.form_Load);
             this.DragDrop += new System.Windows.Forms.DragEventHandler(this.form_DragDrop);
             this.DragEnter += new System.Windows.Forms.DragEventHandler(this.form_DragEnter);
