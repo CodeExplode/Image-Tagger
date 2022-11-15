@@ -57,16 +57,6 @@ namespace ImageTagger
 
         private void form_Load(object sender, EventArgs e)
         {
-            database = new ImageTaggerDatabase();
-            database.Load(false);
-
-            gallery = new Gallery(database);
-
-            SetBatchMode(false);
-            ClearFocus();
-
-            txtDatabase.Text = database.databaseLocation;
-
             cmbInterpolationModes.DataSource = new BindingList<InterpolationMode>() {
                 InterpolationMode.NearestNeighbor,
                 InterpolationMode.Bilinear,
@@ -81,6 +71,15 @@ namespace ImageTagger
             timerFilterCooldown = new Timer();
             timerFilterCooldown.Tick += new System.EventHandler(this.timerFilterCooldown_Tick);
             timerFilterCooldown.Interval = 1000;
+
+            txtDatabase.Text = "./TagsDatabase.txt";
+
+            database = new ImageTaggerDatabase();
+            database.Load(txtDatabase.Text, false);
+            gallery = new Gallery(database);
+
+            SetBatchMode(false);
+            ClearFocus();
         }
 
 
@@ -486,19 +485,40 @@ namespace ImageTagger
 
         private void btnLoadDatabase_Click(object sender, EventArgs e)
         {
-            database.databaseLocation = txtDatabase.Text;
-            database.Load(true);
+            if (database.images.Count > 0)
+            {
+                var confirmResult = MessageBox.Show("Unload your current database and batch?", "Proceed?", MessageBoxButtons.YesNo);
+
+                if (confirmResult == DialogResult.No)
+                    return;
+            }
+
+            database = new ImageTaggerDatabase();
+            database.Load(txtDatabase.Text, true);
+            gallery.SetDatabase(database);
+            SetBatchMode(false);
+
             RefreshDatabaseCountLabel();
         }
 
         private void btnSaveDatabase_Click(object sender, EventArgs e)
         {
-            database.Save();
-        }
+            if (txtDatabase.Text != database.loadedFrom && File.Exists(txtDatabase.Text))
+            {
+                string warning = $"Replace {txtDatabase.Text}";
+                
+                if (database.loadedFrom.Length > 0) warning += $" with this database loaded from {database.loadedFrom}";
+                else  warning += " with this new database";
 
-        private void txtDatabase_TextChanged(object sender, EventArgs e)
-        {
-            database.databaseLocation = txtDatabase.Text;
+                warning += $" which contains {database.images.Count} images?";
+
+                var confirmResult = MessageBox.Show(warning, "Replace File?", MessageBoxButtons.YesNo);
+
+                if (confirmResult == DialogResult.No)
+                    return;
+            }
+
+            database.Save(txtDatabase.Text);
         }
 
         #endregion
@@ -1019,15 +1039,23 @@ namespace ImageTagger
     internal class Gallery
     {
         public ImageTaggerDatabase database;
-        public int index = 0;
-        public List<TaggedImage> images = new List<TaggedImage>();
-        public Dictionary<TaggedImage, Image> imageData = new Dictionary<TaggedImage, Image>();
+        public int index;
+        public List<TaggedImage> images;
+        public Dictionary<TaggedImage, Image> imageData;
 
         private static int max_images_in_memory = 20;
 
         public Gallery(ImageTaggerDatabase database)
         {
+            this.SetDatabase(database);
+        }
+
+        public void SetDatabase(ImageTaggerDatabase database)
+        {
             this.database = database;
+            this.index = 0;
+            this.images = new List<TaggedImage>();
+            this.imageData = new Dictionary<TaggedImage, Image>();
         }
 
         public void AddImages(List<TaggedImage> images, bool clear)
@@ -1083,8 +1111,7 @@ namespace ImageTagger
 
     internal class ImageTaggerDatabase
     {
-        public string databaseLocation = "./TagsDatabase.txt";
-        //public List<string> tags = new List<string>();
+        public string loadedFrom = "";
         public Dictionary<string, List<TaggedImage>> tags = new Dictionary<string, List<TaggedImage>>();
         public Dictionary<string, TaggedImage> images = new Dictionary<string, TaggedImage>();
 
@@ -1117,9 +1144,9 @@ namespace ImageTagger
             return imagesInfo;
         }
         
-        public void Save()
+        public void Save(string path)
         {
-            string tempPath = databaseLocation + "_temp";
+            string tempPath = path + "_temp";
 
             if (File.Exists(tempPath))
             {
@@ -1141,24 +1168,25 @@ namespace ImageTagger
                 }
             }
 
-            if (File.Exists(databaseLocation))
-                File.Delete(databaseLocation);
-            System.IO.File.Move(tempPath, databaseLocation);
+            if (File.Exists(path))
+                File.Delete(path);
+            System.IO.File.Move(tempPath, path);
         }
 
-        public void Load(bool userActivated)
+        public void Load(string path, bool userActivated)
         {
-            if (!File.Exists(databaseLocation))
+            if (!File.Exists(path))
             {
                 if (userActivated)
-                    MessageBox.Show(databaseLocation + " doesn't exist", "Error Loading", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(path + " doesn't exist", "Error Loading", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             this.tags.Clear();
             this.images.Clear();
+            this.loadedFrom = path;
 
-            using (StreamReader sr = new StreamReader(databaseLocation))
+            using (StreamReader sr = new StreamReader(path))
             {
                 int stage = 0;
                 TaggedImage image = null;
