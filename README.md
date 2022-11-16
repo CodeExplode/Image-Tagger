@@ -2,6 +2,7 @@
 A super simple image viewer with the ability to tag images, search by tags, and define source regions for AI training purposes
 
 ![preview image](ImageTagger_v5.png)
+![preview image](ImageTagger_v6.png)
 
 Controls:
 * Left/Right to scroll images, or click on the edges
@@ -19,6 +20,7 @@ Implemented:
 * Full-screen slideshow with speed setting
 * Interpolation options
 * Somewhat efficient handling of large volumes of images (dragging in tens of thousands may take a minute)
+* Clickable tags or text, switch between modes by clicking on Filter<> or Tags<>
 
 Not Implemented:
 * Removing images from the current batch
@@ -27,5 +29,7 @@ Not Implemented:
 * WebP support, GIF playback
 
 It occasionally freezes when importing large batches of images, which I'm looking into. It's best to save beforehand.
+
+Filtering on tags with tens of thousands of images can be slow, however putting less common tags first can solve this
 
 Using [an icon from flaticon](https://www.flaticon.com/free-icon/computer_8891318)
