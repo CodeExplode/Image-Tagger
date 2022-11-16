@@ -2,7 +2,6 @@
 A super simple image viewer with the ability to tag images, search by tags, and define source regions for AI training purposes
 
 ![preview image](ImageTagger_v5.png)
-![preview image](ImageTagger_v6.png)
 
 Controls:
 * Left/Right to scroll images, or click on the edges
