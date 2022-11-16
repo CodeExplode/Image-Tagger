@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Drawing.Drawing2D;
 using System.ComponentModel;
 using System.Linq;
+using System.Text;
 
 
 // TODO
@@ -23,7 +24,7 @@ using System.Linq;
 // + Add webp support
 // + maybe shouldn't add new images to database automatically, and gallery should hold a cache of unsaved images. Maybe have an 'Add to Database (count)' button
 // + allow minimum zoom to at least be the original size of the picture, for small pictures
-// + maybe add an auto-zoom checkbox to settings
+// + maybe add an auto-zoom checkbox to settings, or a max auto size option (with 1x being no resizing)
 // + undo/redo on selection sizing
 
 namespace ImageTagger
@@ -64,6 +65,7 @@ namespace ImageTagger
                 InterpolationMode.HighQualityBilinear,
                 InterpolationMode.HighQualityBicubic
             };
+            cmbInterpolationModes.SelectedItem = InterpolationMode.Bilinear;
 
             timerSlideshow = new Timer();
             timerSlideshow.Tick += new System.EventHandler(this.timerSlideshow_Tick);
@@ -98,7 +100,7 @@ namespace ImageTagger
             {
                 var filenames = data as string[];
                 List<TaggedImage> images = database.GetImageInfo(filenames, true);
-                if (images.Count> 0)
+                if (images.Count > 0)
                 {
                     // important - this will force recording the tags if the textbox hasn't been left yet
                     // and will ensure the textbox isn't focused when new images load and unfocus it, triggering a write of tags
@@ -116,14 +118,14 @@ namespace ImageTagger
 
         #endregion
 
-        
+
         #region GALLERY
 
         private void AddToGallery(List<TaggedImage> images, bool clearGallery, bool isBatch, string source)
         {
             gallery.AddImages(images, clearGallery);
             SetBatchMode(isBatch);
-            lblFilter.Text = "Filter" + (gallery.images.Count > 0 ? $"({gallery.images.Count})" : "");
+            lblFilter.Text = "Filter " + (gallery.images.Count > 0 ? $"({gallery.images.Count})" : "") + " <>";
             gallery.index = (images.Count == 0 ? 0 : gallery.images.IndexOf(images[0]));
             ImageChanged(source == "drop");
 
@@ -163,7 +165,7 @@ namespace ImageTagger
             if (gallery.images.Count == 0)
             {
                 this.Text = "Image Tagger";
-                txtTags.Text = "";
+                DisplayTags();
                 gridTrainingSources.Rows.Clear();
             }
             else
@@ -229,11 +231,11 @@ namespace ImageTagger
 
                 if (trainingBounds.Length == 4)
                 {
-                    Pen glow = new Pen(Color.FromArgb(255/4, 255, 255, 255), 3);
+                    Pen glow = new Pen(Color.FromArgb(255 / 4, 255, 255, 255), 3);
                     Pen stroke = new Pen(Color.Red, 1);
                     //paintEventArgs.Graphics.DrawRectangle(glow, trainingBounds[0], trainingBounds[1], trainingBounds[2], trainingBounds[3]); // seems kind of offputting, need to work on it
                     paintEventArgs.Graphics.DrawRectangle(stroke, trainingBounds[0], trainingBounds[1], trainingBounds[2], trainingBounds[3]);
-                    
+
                     // reply on https://stackoverflow.com/q/11238628 claims pens need to be disposed of
                     glow.Dispose();
                     stroke.Dispose();
@@ -267,7 +269,7 @@ namespace ImageTagger
                 if (diffBot > 0) pan.Y += diffBot / imageBounds.Height;
             }
         }
-        
+
         private void cmbInterpolationModes_SelectedIndexChanged(object sender, EventArgs e)
         {
             Repaint();
@@ -416,7 +418,7 @@ namespace ImageTagger
             {
                 trainingDragMode = TrainingAreaDragMode.none;
             }
-            
+
             // only consider it a click if the image wasn't dragged (could replace with doneDrag)
             if (Math.Abs(e.Location.X - mouseDownAt.X) < 1 && Math.Abs(e.Location.Y - mouseDownAt.Y) < 1)
             {
@@ -454,7 +456,7 @@ namespace ImageTagger
                 float zoomStep = 1.25f;
                 float newZoom = zoom * (e.Delta > 0 ? zoomStep : 0.9625f / zoomStep); // zoom out a bit faster than in
                 newZoom = Math.Min(Math.Max(.5f, newZoom), 12f); // cap zoom ranges
-                
+
                 if ((zoom > 1f && newZoom < 1f) || (zoom < 1f && newZoom > 1f) || Math.Abs(1 - newZoom) < Math.Min(0.05, zoomStep / 2))
                     newZoom = 1f; // snap to 1.0 zoom when passing over it or when very close
 
@@ -485,7 +487,7 @@ namespace ImageTagger
         {
             // https://stackoverflow.com/a/21049848
             ColorDialog clrDialog = new ColorDialog();
-            
+
             clrDialog.Color = this.BackColor;
             clrDialog.CustomColors = new int[] { 0xD6DED4, 0xDDDDDD, 0xA1A1A1, 0x6D6A67, 0x4B4B4B, 0x242424, 0x000000 };
 
@@ -503,9 +505,14 @@ namespace ImageTagger
                     return;
             }
 
+            // need a better general clear method, same with dragging images in
+            gallery.AddImages(new List<TaggedImage>(), true); // should have a .Clear method
+            DisplayTags();
+
             database = new ImageTaggerDatabase();
             database.Load(txtDatabase.Text, true);
             gallery.SetDatabase(database);
+
             SetBatchMode(false);
 
             RefreshDatabaseCountLabel();
@@ -518,17 +525,20 @@ namespace ImageTagger
 
         private void frmImageTaggerMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            var confirmResult = MessageBox.Show("Save before exit?", "Save?", MessageBoxButtons.YesNoCancel);
+            if (database.images.Count > 0)
+            {
+                var confirmResult = MessageBox.Show("Save before exit?", "Save?", MessageBoxButtons.YesNoCancel);
 
-            if (confirmResult == DialogResult.Cancel)
-            {
-                e.Cancel = true;
-            }
-            else if (confirmResult == DialogResult.Yes)
-            {
-                bool saved = SaveDatabase();
-                if (!saved)
+                if (confirmResult == DialogResult.Cancel)
+                {
                     e.Cancel = true;
+                }
+                else if (confirmResult == DialogResult.Yes)
+                {
+                    bool saved = SaveDatabase();
+                    if (!saved)
+                        e.Cancel = true;
+                }
             }
         }
 
@@ -590,6 +600,15 @@ namespace ImageTagger
 
         #region TAGS
 
+
+        private void lblTags_Click(object sender, EventArgs e)
+        {
+            txtTags.Visible = !txtTags.Visible;
+            tagsSelectorImage.Visible = !txtTags.Visible;
+
+            DisplayTags();
+        }
+
         private void DisplayTags()
         {
             List<string> tags = new List<string>();
@@ -600,9 +619,16 @@ namespace ImageTagger
                 else
                     tags = database.GetImageTags(gallery.CurrentImage());
 
+            if (txtTags.Visible)
+                RefreshTagText(tags);
+            else if (tagsSelectorImage.Visible)
+                RefreshTagPicker(tags);
+        }
+
+        private void RefreshTagText(List<string> tags)
+        {
             tags.Sort();
 
-            // print tagIndices
             string tagsText = "";
 
             foreach (string tag in tags)
@@ -610,13 +636,54 @@ namespace ImageTagger
 
             txtTags.Text = tagsText;
         }
-        
-        private void txtTags_Leave(object sender, EventArgs e)
+
+        // might want to start a small timer which does this, is reset on each scroll, to allow faster scrolling
+        private void RefreshTagPicker(List<string> activeTags)
         {
-            ApplyTags();
+            // sort by use count
+            List<KeyValuePair<string, List<TaggedImage>>> sortedTagsByImages = database.tags.ToList();
+            sortedTagsByImages.Sort((x, y) => y.Value.Count.CompareTo(x.Value.Count)); // https://stackoverflow.com/a/14544974
+
+            // put active tags at the front of the list, not actually that appealing it turns out
+            /*List<string> activeTagsSorted = new List<string>();
+            List<string> inactiveTagsSorted = new List<string>();
+
+            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in sortedTagsByImages)
+            {
+                string tag = tagImages.Key;
+                //int count = keyValue.Value.Count; // could show count of each tag in display, but will use up limited room
+
+                if (activeTags.Contains(tag))
+                    activeTagsSorted.Add(tag);
+                else
+                    inactiveTagsSorted.Add(tag);
+            }
+
+            string[] tags = (activeTagsSorted.Concat(inactiveTagsSorted)).ToArray();
+            bool[] states = new bool[tags.Length];
+            for (int i = 0, iLen = activeTagsSorted.Count; i < iLen; i++)
+                states[i] = true;*/
+
+            int count = sortedTagsByImages.Count;
+            string[] tags = new string[count];
+            bool[] states = new bool[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                string tag = sortedTagsByImages[i].Key;
+                tags[i] = tag;
+                states[i] = activeTags.Contains(tag);
+            }
+
+            tagsSelectorImage.LoadTags(tags, states, TagPickerText_Picked);
         }
 
-        private void ApplyTags()
+        private void txtTags_Leave(object sender, EventArgs e)
+        {
+            ApplyTagsText();
+        }
+
+        private void ApplyTagsText()
         {
             if (gallery.images.Count == 0) return;
             TaggedImage currentImage = (this.inBatchMode && chkBatchTag.Checked ? null : gallery.CurrentImage());
@@ -661,6 +728,45 @@ namespace ImageTagger
             }
         }
 
+        private void TagPickerText_Picked(string tag, bool active)
+        {
+            TaggedImage image = gallery.CurrentImage();
+            if (image == null) return;
+
+            if (active)
+                database.tags[tag].Add(image);
+            else
+                database.tags[tag].Remove(image);
+        }
+
+
+        private void lblFilter_Click(object sender, EventArgs e)
+        {
+            txtFilter.Visible = !txtFilter.Visible;
+            tagSelectorFilter.Visible = !txtFilter.Visible;
+
+            // TODO repeated code from the image tags implementation
+            if (tagSelectorFilter.Visible)
+            {
+                List<string> activeFilterTags = Util.ParseTagText(txtFilter.Text);
+
+                List<KeyValuePair<string, List<TaggedImage>>> sortedTagsByImages = database.tags.ToList();
+                sortedTagsByImages.Sort((x, y) => y.Value.Count.CompareTo(x.Value.Count)); // https://stackoverflow.com/a/14544974
+
+                int count = sortedTagsByImages.Count;
+                string[] tags = new string[count];
+                bool[] states = new bool[count];
+                for (int i = 0; i < count; i++)
+                {
+                    string tag = sortedTagsByImages[i].Key;
+                    tags[i] = tag;
+                    states[i] = activeFilterTags.Contains(tag);
+                }
+
+                tagSelectorFilter.LoadTags(tags, states, TagPickerFilter_Picked);
+            }
+        }
+
         private void txtFilter_TextChanged(object sender, EventArgs e)
         {
             // determine if changed by user or code
@@ -678,15 +784,39 @@ namespace ImageTagger
         {
             timerFilterCooldown.Enabled = false;
 
-            BuildGalleryFromFilter();
+            BuildGalleryFromFilteTextr();
         }
 
-        private void BuildGalleryFromFilter()
+        private void BuildGalleryFromFilteTextr()
         {
             List<string> tagWords = Util.ParseTagText(txtFilter.Text);
             List<TaggedImage> newGallery = database.GetFilteredImages(tagWords, true);
             AddToGallery(newGallery, true, false, "filter");
         }
+
+        private void TagPickerFilter_Picked(string tag, bool active)
+        {
+            List<string> tags = new List<string>();
+
+            // hack access to the needed details, not really what the method signature was meant for
+            foreach (TagsSelector.TagButton button in tagSelectorFilter.buttons)
+            {
+                if (button.activated)
+                    tags.Add(button.tag);
+            }
+
+            List<TaggedImage> newGallery = database.GetFilteredImages(tags, true);
+            AddToGallery(newGallery, true, false, "filter");
+
+            // may as well update the filter text too. This is copied from txtTags implementation, could be moved to util
+            // text and picker maybe should be linked, alternating interfaces for the same object
+            tags.Sort();
+            string filterText = "";
+            foreach (string filter in tags) filterText += filter + ", ";
+            txtFilter.Text = filterText;
+        }
+
+
 
         #endregion
 
@@ -755,7 +885,7 @@ namespace ImageTagger
             int[] selections = gallery.CurrentImage().selections;
             DataGridViewRowCollection rows = gridTrainingSources.Rows;
 
-            for (int i = 0, j=0; i < selections.Length; i += 4, j++)
+            for (int i = 0, j = 0; i < selections.Length; i += 4, j++)
             {
                 DataGridViewRow row = rows[j];
 
@@ -791,7 +921,7 @@ namespace ImageTagger
             {
                 DataGridViewRow row = rows[i];
 
-                for (int j=0; j<4; j++)
+                for (int j = 0; j < 4; j++)
                     selections[i * 4 + j] = (row.Cells[j] == currentCell ? currentCellValue : Util.TryParseInt(row.Cells[j].Value));
             }
 
@@ -824,7 +954,7 @@ namespace ImageTagger
 
         private float[] DrawableTrainingBounds(Image imageData)
         {
-            if (imageData!=null && gridTrainingSources.Visible && gridTrainingSources.Rows.Count > 0)
+            if (imageData != null && gridTrainingSources.Visible && gridTrainingSources.Rows.Count > 0)
             {
                 try
                 {
@@ -922,7 +1052,7 @@ namespace ImageTagger
             }
 
             // probably not the best way to do this, but it works for now
-            if (diagonalsMaintainAspect && (mode==TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR))
+            if (diagonalsMaintainAspect && (mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR))
             {
                 int gcd = Util.GreatestCommonDivisor(w, h);
                 int widthIntervals = w / gcd;
@@ -936,7 +1066,7 @@ namespace ImageTagger
                 if (mode == TrainingAreaDragMode.cornerTL)
                 {
                     if (useHoriz) posY = (deltaX > 0); else posX = (deltaY > 0);
-                    
+
                     if (!posX || !posY) steps = Math.Min(steps, Math.Min(x / widthIntervals, y / heightIntervals));
                 }
                 else if (mode == TrainingAreaDragMode.cornerBR)
@@ -965,7 +1095,7 @@ namespace ImageTagger
 
             if (mode == TrainingAreaDragMode.left || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerBL)
             {
-                deltaX = Math.Max(deltaX, 0-x);
+                deltaX = Math.Max(deltaX, 0 - x);
 
                 x += deltaX;
                 w -= deltaX;
@@ -973,7 +1103,7 @@ namespace ImageTagger
 
             if (mode == TrainingAreaDragMode.right || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBR)
             {
-                deltaX = Math.Min(deltaX, imgW-(x+w));
+                deltaX = Math.Min(deltaX, imgW - (x + w));
 
                 w += deltaX;
             }
@@ -986,9 +1116,9 @@ namespace ImageTagger
                 h -= deltaY;
             }
 
-            if (mode == TrainingAreaDragMode.bottom ||mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR)
+            if (mode == TrainingAreaDragMode.bottom || mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR)
             {
-                deltaY = Math.Min(deltaY, imgH - (y+h));
+                deltaY = Math.Min(deltaY, imgH - (y + h));
 
                 h += deltaY;
             }
@@ -1080,7 +1210,6 @@ namespace ImageTagger
 
 
         #endregion
-
     }
 
     #region DATABASE
@@ -1172,7 +1301,7 @@ namespace ImageTagger
             foreach (string imagePath in imagePaths)
             {
                 TaggedImage image = null;
-                
+
                 if (images.ContainsKey(imagePath))
                 {
                     image = images[imagePath];
@@ -1192,7 +1321,7 @@ namespace ImageTagger
 
             return imagesInfo;
         }
-        
+
         public void Save(string path)
         {
             string tempPath = path + "_temp";
@@ -1243,12 +1372,12 @@ namespace ImageTagger
 
                 while ((line = sr.ReadLine()) != null)
                 {
-                    if (stage==0)
+                    if (stage == 0)
                     {
                         image = new TaggedImage(line);
                         images[line] = image;
                     }
-                    else if (stage==1)
+                    else if (stage == 1)
                     {
                         string[] imageTags = line.Split(',');
                         foreach (string tag in imageTags)
@@ -1306,7 +1435,7 @@ namespace ImageTagger
         {
             List<TaggedImage> images = new List<TaggedImage>();
 
-            for (int i = 0; i < tagList.Count; i++)
+            for (int i = 0, iLen = tagList.Count; i < iLen; i++)
             {
                 string tag = tagList[i];
 
@@ -1324,7 +1453,8 @@ namespace ImageTagger
                 else
                 {
                     if (requiresAllTags)
-                        Util.PruneToSharedEntries(images, imagesForTag);
+                        //Util.PruneToSharedEntries(images, imagesForTag);
+                        images = Util.SharedEntries(images, imagesForTag);
                     else
                         Util.AddNewElements(images, imagesForTag);
                 }
@@ -1386,6 +1516,26 @@ namespace ImageTagger
         {
             // https://stackoverflow.com/a/4066127
             list.RemoveAll(item => !entries.Contains(item));
+
+            /*for(int i = list.Count-1; i >= 0; i--)
+            {
+                T listEntry = list[i];
+                if (!entries.Contains(listEntry))
+                    list.RemoveAt(i);
+            }*/
+        }
+
+        public static List<T> SharedEntries<T>(List<T> list, List<T> entries)
+        {
+            List<T> shared = new List<T>();
+
+            foreach (T item in list)
+            {
+                if (entries.Contains(item))
+                    shared.Add(item);
+            }
+
+            return shared;
         }
 
         public static bool ContainsAll<T>(IEnumerable<T> source, IEnumerable<T> values)
@@ -1466,7 +1616,7 @@ namespace ImageTagger
             return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
         }
 
-        public static double DistToLineSegment(double x, double y, double x1, double y1, double x2, double y2, double from=0, double to=1)
+        public static double DistToLineSegment(double x, double y, double x1, double y1, double x2, double y2, double from = 0, double to = 1)
         {
             if (from != 0 || to != 1)
             {
@@ -1512,6 +1662,7 @@ namespace ImageTagger
         {
             return x >= x1 && x <= x2 && y >= y1 && y <= y2;
         }
+
 
         public class ValidImageChecker
         {
@@ -1583,6 +1734,177 @@ namespace ImageTagger
                         return false;
 
                 return true;
+            }
+        }
+    }
+
+    internal class TagsSelector : System.Windows.Forms.Panel
+    {
+        public List<TagButton> buttons = new List<TagButton>();
+        int horizSpacing = 2;
+        int rowHeight = 14;
+        int textVerticalOffset = -100;
+        Action<string, bool> changeMethod;
+
+        public TagsSelector() : base()
+        {
+            this.DoubleBuffered = true;
+        }
+
+        public void LoadTags(string[] tags, bool[] activeStates, Action<string, bool> changeMethod)
+        {
+            this.buttons.Clear();
+
+            List<int> rowWidths = new List<int>();
+            int maxRowWidth = this.Size.Width - 10; // give some room for scrollbar (will need to activate and set a container height or something, or put this in a container)
+
+            for (int i=0, iLen=tags.Length; i<iLen; i++)
+            {
+                string tag = tags[i];
+                bool activated = activeStates[i];
+
+                Size textSize = TextRenderer.MeasureText(tag, this.Font);
+
+                if (textVerticalOffset == -100)
+                    textVerticalOffset = (rowHeight - textSize.Height) / 2;
+
+                int textW = Math.Min(textSize.Width, maxRowWidth);
+
+                int rowIndex = 0;
+                int rowCount = rowWidths.Count;
+                int rowWidth = 0;
+
+                for (; rowIndex<rowCount; rowIndex++)
+                    if (rowWidths[rowIndex] + textW + horizSpacing < maxRowWidth) { rowWidth = rowWidths[rowIndex]; break; }
+
+                Rectangle area = new Rectangle(rowWidth, rowIndex * rowHeight, textW, rowHeight);
+                TagButton button = new TagButton(area, tag, activated);
+                buttons.Add(button);
+
+                if (rowIndex == rowCount)
+                    rowWidths.Add(textW + horizSpacing);
+                else
+                    rowWidths[rowIndex] = rowWidth + textW + horizSpacing;
+            }
+
+            this.AutoScrollMinSize = new Size(0, rowWidths.Count * rowHeight);
+
+            this.changeMethod = changeMethod;
+
+            this.Invalidate(); // TODO it's possible that changing the scrollbar invalidates, in which case probably only do this if check scroolbar returns false
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            //base.OnMouseMove(e);
+
+            TagButton button = GetTagButtonAt(e.Location.X, e.Location.Y);
+
+            this.Cursor = (button == null ? Cursors.Default : Cursors.Hand);
+        }
+
+        protected override void OnMouseClick(MouseEventArgs e)
+        {
+            //base.OnMouseClick(e);
+
+            TagButton button = GetTagButtonAt(e.Location.X, e.Location.Y);
+
+            if (button != null)
+            {
+                button.activated = !button.activated;
+
+                this.changeMethod(button.tag, button.activated);
+            }
+
+            this.Invalidate();
+        }
+
+        private TagButton GetTagButtonAt(int x, int y)
+        {
+            y -= this.AutoScrollPosition.Y;
+
+            foreach (TagButton button in buttons)
+            {
+                Rectangle area = button.area;
+
+                if (x >= area.Left && x <= area.Right && y >= area.Top && y <= area.Bottom)
+                    return button;
+            }
+
+            return null;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            //base.OnPaint(e);
+
+            if (buttons.Count == 0)
+                return;
+
+            e.Graphics.Clear(BackColor);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            //int yOffset = this.AutoScrollPosition.Y;
+            e.Graphics.TranslateTransform(0, this.AutoScrollPosition.Y); // https://stackoverflow.com/a/72348170
+
+            Font font = new System.Drawing.Font(this.Font.Name, this.Font.Size, this.Font.Style);
+            StringFormat drawFormat = new StringFormat();
+            drawFormat.Alignment = StringAlignment.Near;
+
+            Brush colActive = new SolidBrush(Color.FromArgb(255, 60, 104, 142)); // new SolidBrush(Color.FromArgb(255, 126, 138, 96)); 
+            Brush colInactive = new SolidBrush(Color.FromArgb(255, 126, 138, 96)); //new SolidBrush(Color.FromArgb(255, 183, 181, 163)); //new SolidBrush(Color.FromArgb(255, 240, 240, 240)); //new SolidBrush(Color.White);
+            Brush colActiveText = new SolidBrush(Color.White);
+            Brush colInactiveText = new SolidBrush(Color.White); // new SolidBrush(Color.FromArgb(255, 50, 50, 50)); // new SolidBrush(Color.Black);
+
+            foreach (TagButton button in buttons)
+            {
+                Rectangle box = button.area;
+
+                using (GraphicsPath path = CreatePath(box, 3))
+                    e.Graphics.FillPath((button.activated ? colActive : colInactive), path);
+
+                e.Graphics.DrawString(button.tag, font, (button.activated ? colActiveText : colInactiveText), new PointF(box.Left, box.Top + textVerticalOffset), drawFormat);
+            }
+
+            colInactive.Dispose();
+            colActive.Dispose();
+            colInactiveText.Dispose();
+            colActiveText.Dispose();
+            font.Dispose();
+
+            //base.OnPaint(e);
+        }
+
+
+        protected override void OnScroll(ScrollEventArgs se)
+        {
+            base.OnScroll(se);
+        }
+
+
+        private static GraphicsPath CreatePath(Rectangle rect, int nRadius)
+        {
+            // https://social.msdn.microsoft.com/Forums/vstudio/en-US/0295917a-8702-432e-bad5-c97697010254/how-to-make-perfect-rounded-corner-shape-in-windows-form-using-c?forum=csharpgeneral
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, nRadius, nRadius, 180f, 90f);
+            path.AddArc((rect.Right - nRadius), rect.Y, nRadius, nRadius, 270f, 90f);
+            path.AddArc((rect.Right - nRadius), (rect.Bottom - nRadius), nRadius, nRadius, 0f, 90f);
+            path.AddArc(rect.X, (rect.Bottom - nRadius), nRadius, nRadius, 90f, 90f);
+            path.CloseFigure();
+            return path;
+        }
+
+        public class TagButton
+        {
+            public Rectangle area;
+            public String tag;
+            public bool activated;
+
+            public TagButton(Rectangle area, String tag, bool activated)
+            {
+                this.area = area;
+                this.tag = tag;
+                this.activated = activated;
             }
         }
     }

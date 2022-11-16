@@ -44,8 +44,9 @@
             this.pnlBatch = new System.Windows.Forms.Panel();
             this.btnExitBatch = new System.Windows.Forms.Button();
             this.chkBatchTag = new System.Windows.Forms.CheckBox();
-            this.lblImageHeader = new System.Windows.Forms.Label();
-            this.panel1 = new System.Windows.Forms.Panel();
+            this.lblTags = new System.Windows.Forms.Label();
+            this.pnlResizableTags = new System.Windows.Forms.Panel();
+            this.tagsSelectorImage = new ImageTagger.TagsSelector();
             this.txtTags = new System.Windows.Forms.RichTextBox();
             this.lblTrainingData = new System.Windows.Forms.Label();
             this.pnlResizableTrainingBounds = new System.Windows.Forms.Panel();
@@ -67,11 +68,12 @@
             this.btnChangeBackground = new System.Windows.Forms.Button();
             this.cmbInterpolationModes = new System.Windows.Forms.ComboBox();
             this.btnCollapseSidePanel = new System.Windows.Forms.Button();
+            this.tagSelectorFilter = new ImageTagger.TagsSelector();
             this.pnlLeft.SuspendLayout();
             this.pnlLeftFlow.SuspendLayout();
             this.pnlResizableFilter.SuspendLayout();
             this.pnlBatch.SuspendLayout();
-            this.panel1.SuspendLayout();
+            this.pnlResizableTags.SuspendLayout();
             this.pnlResizableTrainingBounds.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).BeginInit();
             this.pnlDatabase.SuspendLayout();
@@ -87,7 +89,7 @@
             this.pnlLeft.Controls.Add(this.pnlLeftFlow);
             this.pnlLeft.Location = new System.Drawing.Point(0, 0);
             this.pnlLeft.Name = "pnlLeft";
-            this.pnlLeft.Size = new System.Drawing.Size(141, 843);
+            this.pnlLeft.Size = new System.Drawing.Size(141, 958);
             this.pnlLeft.TabIndex = 2;
             // 
             // pnlLeftFlow
@@ -97,8 +99,8 @@
             this.pnlLeftFlow.Controls.Add(this.lblFilter);
             this.pnlLeftFlow.Controls.Add(this.pnlResizableFilter);
             this.pnlLeftFlow.Controls.Add(this.pnlBatch);
-            this.pnlLeftFlow.Controls.Add(this.lblImageHeader);
-            this.pnlLeftFlow.Controls.Add(this.panel1);
+            this.pnlLeftFlow.Controls.Add(this.lblTags);
+            this.pnlLeftFlow.Controls.Add(this.pnlResizableTags);
             this.pnlLeftFlow.Controls.Add(this.lblTrainingData);
             this.pnlLeftFlow.Controls.Add(this.pnlResizableTrainingBounds);
             this.pnlLeftFlow.Controls.Add(this.lblDatabase);
@@ -109,7 +111,7 @@
             this.pnlLeftFlow.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.pnlLeftFlow.Location = new System.Drawing.Point(0, 0);
             this.pnlLeftFlow.Name = "pnlLeftFlow";
-            this.pnlLeftFlow.Size = new System.Drawing.Size(139, 841);
+            this.pnlLeftFlow.Size = new System.Drawing.Size(139, 956);
             this.pnlLeftFlow.TabIndex = 0;
             this.pnlLeftFlow.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
             // 
@@ -119,14 +121,16 @@
             this.lblFilter.ForeColor = System.Drawing.Color.White;
             this.lblFilter.Location = new System.Drawing.Point(3, 0);
             this.lblFilter.Name = "lblFilter";
-            this.lblFilter.Size = new System.Drawing.Size(29, 13);
+            this.lblFilter.Size = new System.Drawing.Size(44, 13);
             this.lblFilter.TabIndex = 7;
-            this.lblFilter.Text = "Filter";
+            this.lblFilter.Text = "Filter <>";
+            this.lblFilter.Click += new System.EventHandler(this.lblFilter_Click);
             this.lblFilter.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
             // 
             // pnlResizableFilter
             // 
             this.pnlResizableFilter.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.pnlResizableFilter.Controls.Add(this.tagSelectorFilter);
             this.pnlResizableFilter.Controls.Add(this.txtFilter);
             this.pnlResizableFilter.Location = new System.Drawing.Point(3, 16);
             this.pnlResizableFilter.Name = "pnlResizableFilter";
@@ -141,6 +145,7 @@
             this.txtFilter.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtFilter.BackColor = System.Drawing.Color.White;
             this.txtFilter.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtFilter.Location = new System.Drawing.Point(0, 0);
             this.txtFilter.Name = "txtFilter";
@@ -187,34 +192,49 @@
             this.chkBatchTag.UseVisualStyleBackColor = false;
             this.chkBatchTag.CheckedChanged += new System.EventHandler(this.chkBatchTag_CheckedChanged);
             // 
-            // lblImageHeader
+            // lblTags
             // 
-            this.lblImageHeader.AutoSize = true;
-            this.lblImageHeader.ForeColor = System.Drawing.Color.White;
-            this.lblImageHeader.Location = new System.Drawing.Point(3, 182);
-            this.lblImageHeader.Name = "lblImageHeader";
-            this.lblImageHeader.Size = new System.Drawing.Size(31, 13);
-            this.lblImageHeader.TabIndex = 10;
-            this.lblImageHeader.Text = "Tags";
-            this.lblImageHeader.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
+            this.lblTags.AutoSize = true;
+            this.lblTags.ForeColor = System.Drawing.Color.White;
+            this.lblTags.Location = new System.Drawing.Point(3, 182);
+            this.lblTags.Name = "lblTags";
+            this.lblTags.Size = new System.Drawing.Size(46, 13);
+            this.lblTags.TabIndex = 10;
+            this.lblTags.Text = "Tags <>";
+            this.lblTags.Click += new System.EventHandler(this.lblTags_Click);
+            this.lblTags.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
             // 
-            // panel1
+            // pnlResizableTags
             // 
-            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.panel1.Controls.Add(this.txtTags);
-            this.panel1.Location = new System.Drawing.Point(3, 198);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(133, 238);
-            this.panel1.TabIndex = 9;
-            this.panel1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseDown);
-            this.panel1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseMove);
-            this.panel1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseUp);
+            this.pnlResizableTags.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.pnlResizableTags.Controls.Add(this.tagsSelectorImage);
+            this.pnlResizableTags.Controls.Add(this.txtTags);
+            this.pnlResizableTags.Location = new System.Drawing.Point(3, 198);
+            this.pnlResizableTags.Name = "pnlResizableTags";
+            this.pnlResizableTags.Size = new System.Drawing.Size(133, 238);
+            this.pnlResizableTags.TabIndex = 9;
+            this.pnlResizableTags.MouseDown += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseDown);
+            this.pnlResizableTags.MouseMove += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseMove);
+            this.pnlResizableTags.MouseUp += new System.Windows.Forms.MouseEventHandler(this.panelResizeable_MouseUp);
+            // 
+            // tagsSelectorImage
+            // 
+            this.tagsSelectorImage.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.tagsSelectorImage.BackColor = System.Drawing.Color.White;
+            this.tagsSelectorImage.Location = new System.Drawing.Point(0, 0);
+            this.tagsSelectorImage.Name = "tagsSelectorImage";
+            this.tagsSelectorImage.Size = new System.Drawing.Size(133, 232);
+            this.tagsSelectorImage.TabIndex = 4;
+            this.tagsSelectorImage.Visible = false;
             // 
             // txtTags
             // 
             this.txtTags.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtTags.BackColor = System.Drawing.Color.White;
             this.txtTags.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtTags.Location = new System.Drawing.Point(0, 0);
             this.txtTags.Name = "txtTags";
@@ -481,7 +501,7 @@
             this.btnCollapseSidePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(103)))), ((int)(((byte)(106)))), ((int)(((byte)(109)))));
             this.btnCollapseSidePanel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnCollapseSidePanel.ForeColor = System.Drawing.Color.White;
-            this.btnCollapseSidePanel.Location = new System.Drawing.Point(140, 801);
+            this.btnCollapseSidePanel.Location = new System.Drawing.Point(140, 916);
             this.btnCollapseSidePanel.Name = "btnCollapseSidePanel";
             this.btnCollapseSidePanel.Size = new System.Drawing.Size(19, 42);
             this.btnCollapseSidePanel.TabIndex = 3;
@@ -489,13 +509,25 @@
             this.btnCollapseSidePanel.UseVisualStyleBackColor = false;
             this.btnCollapseSidePanel.Click += new System.EventHandler(this.btnCollapseSidePanel_Click);
             // 
+            // tagSelectorFilter
+            // 
+            this.tagSelectorFilter.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.tagSelectorFilter.BackColor = System.Drawing.Color.White;
+            this.tagSelectorFilter.Location = new System.Drawing.Point(0, 0);
+            this.tagSelectorFilter.Name = "tagSelectorFilter";
+            this.tagSelectorFilter.Size = new System.Drawing.Size(136, 96);
+            this.tagSelectorFilter.TabIndex = 5;
+            this.tagSelectorFilter.Visible = false;
+            // 
             // frmImageTaggerMain
             // 
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(214)))), ((int)(((byte)(222)))), ((int)(((byte)(212)))));
-            this.ClientSize = new System.Drawing.Size(990, 843);
+            this.ClientSize = new System.Drawing.Size(1027, 958);
             this.Controls.Add(this.btnCollapseSidePanel);
             this.Controls.Add(this.pnlLeft);
             this.DoubleBuffered = true;
@@ -520,7 +552,7 @@
             this.pnlResizableFilter.ResumeLayout(false);
             this.pnlBatch.ResumeLayout(false);
             this.pnlBatch.PerformLayout();
-            this.panel1.ResumeLayout(false);
+            this.pnlResizableTags.ResumeLayout(false);
             this.pnlResizableTrainingBounds.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).EndInit();
             this.pnlDatabase.ResumeLayout(false);
@@ -538,10 +570,10 @@
         private System.Windows.Forms.Label lblFilter;
         private System.Windows.Forms.Button btnExitBatch;
         private System.Windows.Forms.Panel pnlResizableFilter;
-        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel pnlResizableTags;
         private System.Windows.Forms.Button btnCollapseSidePanel;
         private System.Windows.Forms.Panel pnlBatch;
-        private System.Windows.Forms.Label lblImageHeader;
+        private System.Windows.Forms.Label lblTags;
         private System.Windows.Forms.CheckBox chkBatchTag;
         private System.Windows.Forms.Panel pnlResizableTrainingBounds;
         private System.Windows.Forms.Label lblTrainingData;
@@ -564,6 +596,8 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn W;
         private System.Windows.Forms.DataGridViewTextBoxColumn H;
         private System.Windows.Forms.DataGridViewTextBoxColumn Aspect;
+        private TagsSelector tagsSelectorImage;
+        private TagsSelector tagSelectorFilter;
     }
 }
 
