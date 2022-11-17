@@ -31,6 +31,4 @@ Not Implemented:
 
 It occasionally freezes when importing large batches of images, which I'm looking into. It's best to save beforehand.
 
-Filtering on tags with tens of thousands of images can be slow, however putting less common tags first can solve this
-
 Using [an icon from flaticon](https://www.flaticon.com/free-icon/computer_8891318)
