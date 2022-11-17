@@ -14,14 +14,14 @@ Controls:
 Implemented:
 * Tagging
 * Searching images by tags
-* Saving/Loading a text file of image locations, image tags, and image training regions
-* Definable regions for AI training
+* Clickable tags or text inputs, switch between by clicking on Filter<> or Tags<>
+* Drag & Drop images to add (dragging in tens of thousands may take a minute)
+* Drag & Drop onto tag names to quickly tag groups of images (e.g. in split screen with an explorer gallery). On the right panel (shown by pressing R)
 * Gallery functionality
 * Full-screen slideshow with speed setting
 * Interpolation options
-* Somewhat efficient handling of large volumes of images (dragging in tens of thousands may take a minute)
-* Clickable tags or text input, switch between modes by clicking on Filter<> or Tags<>
-* Drag & Drop to tag names to quickly tag images or groups of images (e.g. in split screen view with explorer). On the right panel shown by pressing R
+* Definable regions for AI training
+* Saving/Loading a database text file of image locations, image tags, and image training regions
 
 Not Implemented:
 * Removing images from the current batch
