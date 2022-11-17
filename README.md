@@ -15,7 +15,7 @@ Implemented:
 * Tagging
 * Searching images by tags
 * Clickable tags or text inputs, switch between by clicking on Filter<> or Tags<>
-* Drag & Drop images to add (dragging in tens of thousands may take a minute)
+* Drag & Drop images (dragging in tens of thousands may take a minute)
 * Drag & Drop onto tag names to quickly tag groups of images (e.g. in split screen with an explorer gallery). On the right panel (shown by pressing R)
 * Gallery functionality
 * Full-screen slideshow with speed setting
