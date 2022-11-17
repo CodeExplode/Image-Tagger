@@ -29,6 +29,6 @@ Not Implemented:
 * Negative search terms
 * WebP support, GIF playback
 
-It occasionally freezes when importing large batches of images, which I'm looking into. It's best to save beforehand.
+It occasionally freezes when dragging in large batches of images, which I'm looking into. It's best to save beforehand.
 
 Using [an icon from flaticon](https://www.flaticon.com/free-icon/computer_8891318)
