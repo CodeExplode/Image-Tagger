@@ -8,9 +8,9 @@ Controls:
 * Space to enter/exit gallery slideshow mode (Escape also exits)
 * Mouse click to pan, mouse wheel to zoom
 * Drag in more than one image to begin a batch. Dragging in more images adds to the batch
+* Ctrl B to enter or exit batch mode. Can convert current search results into a batch
 * Alt disables maintaining aspect ratio when resizing the training area by the corners
 * L & R to show/hide the left & right panels
-* Ctrl B to enter or exit batch mode. Can convert current search results into a batch
 
 Implemented:
 * Tagging
