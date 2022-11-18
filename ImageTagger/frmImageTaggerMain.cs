@@ -28,10 +28,7 @@ using System.Text;
 // + undo/redo on selection sizing
 // + when change tag may remove item from current search filter, maybe need to check when scroll
 
-// + potentially a bar on the right which can be drag targets for different tags (e.g. 1woman, 2woman, standing)
-
-
-
+// + when filtering, maybe start with tag with smallest list of images, so less to compare and remove later on
 
 namespace ImageTagger
 {
@@ -429,6 +426,12 @@ namespace ImageTagger
                     TogglePanelRightVisible();
                     return true;
                 }
+
+                if (keyData == (Keys.Control | Keys.B))
+                {
+                    SetBatchMode(!this.inBatchMode);
+                    return true;
+                }
             }
 
             return base.ProcessCmdKey(ref msg, keyData); // https://stackoverflow.com/a/34168026
@@ -708,26 +711,6 @@ namespace ImageTagger
             // sort by use count
             List<KeyValuePair<string, List<TaggedImage>>> sortedTagsByImages = database.tags.ToList();
             sortedTagsByImages.Sort((x, y) => y.Value.Count.CompareTo(x.Value.Count)); // https://stackoverflow.com/a/14544974
-
-            // put active tags at the front of the list, not actually that appealing it turns out
-            /*List<string> activeTagsSorted = new List<string>();
-            List<string> inactiveTagsSorted = new List<string>();
-
-            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in sortedTagsByImages)
-            {
-                string tag = tagImages.Key;
-                //int count = keyValue.Value.Count; // could show count of each tag in display, but will use up limited room
-
-                if (activeTags.Contains(tag))
-                    activeTagsSorted.Add(tag);
-                else
-                    inactiveTagsSorted.Add(tag);
-            }
-
-            string[] tags = (activeTagsSorted.Concat(inactiveTagsSorted)).ToArray();
-            bool[] states = new bool[tags.Length];
-            for (int i = 0, iLen = activeTagsSorted.Count; i < iLen; i++)
-                states[i] = true;*/
 
             int count = sortedTagsByImages.Count;
             string[] tags = new string[count];
@@ -1467,34 +1450,6 @@ namespace ImageTagger
             }
         }
 
-        // no longer needed since tags are stored on images now
-        /*public List<string> GetImageTags(TaggedImage image)
-        {
-            List<string> imageTags = new List<string>();
-
-            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in this.tags)
-            {
-                if (tagImages.Value.Contains(image))
-                    imageTags.Add(tagImages.Key);
-            }
-
-            return imageTags;
-        }*/
-
-        // moved to Util since tags are stored on image now
-        /*public List<string> GetSharedImageTags(List<TaggedImage> images)
-        {
-            List<string> imageTags = new List<string>();
-
-            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in this.tags)
-            {
-                if (Util.ContainsAll(tagImages.Value, images))
-                    imageTags.Add(tagImages.Key);
-            }
-
-            return imageTags;
-        }*/
-
         public void EnsureTagExists(string tag)
         {
             if (!this.tags.ContainsKey(tag))
@@ -1502,9 +1457,6 @@ namespace ImageTagger
                 this.tags[tag] = new List<TaggedImage>();
             }
         }
-
-        // on fetching items from 1 tag this is fast, but when comparing on multiple big tags it's slow
-        // could branch depending on situation, or always fetch first
 
         public List<TaggedImage> GetFilteredImages(List<string> tagList, bool requiresAllTags)
         {
@@ -1528,9 +1480,6 @@ namespace ImageTagger
                 else
                 {
                     if (requiresAllTags)
-                        //Util.PruneToSharedEntries(images, imagesForTag);
-                        //images = Util.SharedEntries(images, imagesForTag);
-
                         for (int j=images.Count-1; j>=0; j--)
                         {
                             if (!images[j].tags.Contains(tag))
@@ -1543,21 +1492,6 @@ namespace ImageTagger
 
             return images;
         }
-
-        // no longer needed since tags are now stored on images
-        /*public Dictionary<TaggedImage, List<string>> GetAllImageTags()
-        {
-            Dictionary<TaggedImage, List<string>> allImageTags = new Dictionary<TaggedImage, List<string>>();
-
-            foreach (TaggedImage image in this.images.Values)
-                allImageTags[image] = new List<string>();
-
-            foreach (KeyValuePair<string, List<TaggedImage>> tagImages in this.tags)
-                foreach (TaggedImage image in tagImages.Value)
-                    allImageTags[image].Add(tagImages.Key);
-
-            return allImageTags;
-        }*/
     }
 
     internal class TaggedImage
