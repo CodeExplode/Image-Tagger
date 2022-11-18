@@ -30,7 +30,7 @@ Not Implemented:
 * Negative search terms
 * WebP support, GIF playback
 
-To rename a tag, filter on just that tag, then enter batch mode with Ctrl B and change the tag for all images which use it
+To rename a tag, filter on just that tag, then enter batch mode with Ctrl B and change the tag
 
 It occasionally freezes when dragging in large batches of images, which I'm looking into. It's best to save beforehand.
 
