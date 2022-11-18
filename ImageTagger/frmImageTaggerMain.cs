@@ -875,14 +875,17 @@ namespace ImageTagger
             {
                 Image currentImageData = gallery.CurrentImageData();
 
-                int imgW = currentImageData.Width;
-                int imgH = currentImageData.Height;
+                if (currentImageData != null)
+                {
+                    int imgW = currentImageData.Width;
+                    int imgH = currentImageData.Height;
 
-                int square_size = Math.Min(imgW, imgH);
-                int x = (square_size == imgW) ? 0 : Math.Max(0, imgW / 2 - square_size / 2);
-                int y = (square_size == imgH) ? 0 : Math.Max(0, imgH / 2 - square_size / 2);
+                    int square_size = Math.Min(imgW, imgH);
+                    int x = (square_size == imgW) ? 0 : Math.Max(0, imgW / 2 - square_size / 2);
+                    int y = (square_size == imgH) ? 0 : Math.Max(0, imgH / 2 - square_size / 2);
 
-                image.selections = new int[] { x, y, square_size, square_size };
+                    image.selections = new int[] { x, y, square_size, square_size };
+                }
             }
         }
 
@@ -1070,6 +1073,8 @@ namespace ImageTagger
         {
             // account for how the image is currently scaled to the screen
             Image image = gallery.CurrentImageData();
+            if (image == null) return;
+
             int imgW = image.Size.Width;
             int imgH = image.Size.Height;
             deltaX = (int)(deltaX / (imageBounds.Width / imgW));
@@ -1318,7 +1323,7 @@ namespace ImageTagger
                 return null;
 
             TaggedImage currentImage = this.CurrentImage();
-            Image currentImageData;
+            Image currentImageData = null;
 
             if (imageData.ContainsKey(currentImage))
             {
@@ -1326,7 +1331,11 @@ namespace ImageTagger
             }
             else
             {
-                currentImageData = Image.FromFile(currentImage.filepath);
+                try
+                {
+                    currentImageData = Image.FromFile(currentImage.filepath);
+                }
+                catch (Exception ex) { }
 
                 // naive pruning solution since dictionaries aren't ordered, just wipe the dictionary. Could check for neighbours from this.images list
                 if (this.imageData.Count > max_images_in_memory) {
