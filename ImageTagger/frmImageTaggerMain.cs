@@ -40,6 +40,7 @@ namespace ImageTagger
 
         Timer timerSlideshow;
         Timer timerFilterCooldown;
+        ToolTip tooltip = new ToolTip();
 
         RectangleF imageBounds = new RectangleF();
         bool cursorOnImage; // a hack to get around there being no scroll events on forms
@@ -76,7 +77,7 @@ namespace ImageTagger
 
             timerFilterCooldown = new Timer();
             timerFilterCooldown.Tick += new System.EventHandler(this.timerFilterCooldown_Tick);
-            timerFilterCooldown.Interval = 1000;
+            timerFilterCooldown.Interval = 400;// 1000;
 
             txtDatabase.Text = "./TagsDatabase.txt";
 
@@ -160,6 +161,25 @@ namespace ImageTagger
             }
         }
 
+        private void btnAddTag_Click(object sender, EventArgs e)
+        {
+            ComboBox combo = (ComboBox)(((Button)sender).Tag);
+            
+            if (combo.Items.Count == 0 || combo.SelectedItem == null || gallery.images.Count == 0) return;
+
+            string tag = combo.SelectedItem.ToString();
+
+            // very hacky way to do this but avoids doubling up on code
+            if (!(txtTags.Text.EndsWith(",") || txtTags.Text.EndsWith(", ")))
+                txtTags.Text += ", ";
+
+            txtTags.Text += tag;
+
+            ApplyTagsText();
+            //DisplayTags();
+
+            ClearFocus(); // try to solve combo box text staying selected
+        }
 
         #endregion
 
@@ -375,6 +395,8 @@ namespace ImageTagger
                 this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
 
                 timerSlideshow.Enabled = false;
+
+                ImageChanged(false); // ensure tags are up to date etc
             }
         }
 
@@ -621,6 +643,12 @@ namespace ImageTagger
             return true;
         }
 
+
+        private void btnPurge_Click(object sender, EventArgs e)
+        {
+            database.PurgeDeleted();
+        }
+
         #endregion
 
 
@@ -701,8 +729,6 @@ namespace ImageTagger
         private void ApplyTagsText()
         {
             ApplyTags(Util.ParseTagText(txtTags.Text));
-
-            
         }
 
         // might want to start a small timer which does this, is reset on each scroll, to allow faster scrolling
@@ -837,8 +863,6 @@ namespace ImageTagger
             // for now only populate on database load or on revealing the panel, will need to reload or hide/show the panel to repopulate
             if (pnlRight.Visible == false) return;
 
-            //List<string> tags = database.tags.Keys.ToList();
-
             // sort by popularity instead
             List<string> tags = new List<string>();
             List<KeyValuePair<string, List<TaggedImage>>> sortedTagsByImages = database.tags.ToList();
@@ -849,7 +873,7 @@ namespace ImageTagger
 
             int index = 0;
 
-            // https://stackoverflow.com/a/627757
+            /*// https://stackoverflow.com/a/627757
             var controls = from Control c in pnlRight.Controls orderby c.Location.Y select c;
 
             foreach (Control control in controls)
@@ -860,7 +884,61 @@ namespace ImageTagger
                     comboBox.DataSource = new BindingList<string>(tags);
                     comboBox.SelectedIndex = (index < tags.Count ? index++ : -1);
                 }
+            }*/
+
+            pnlRight.SuspendLayout();
+
+            for (int i=pnlRight.Controls.Count-1; i>=0; i--)
+            {
+                if (pnlRight.Controls[i] != lblDragDrop)
+                    pnlRight.Controls.RemoveAt(i);
             }
+
+            int comboHeight = 33;
+            int comboMargin = 15;
+
+            int count = (pnlRight.Size.Height - lblDragDrop.Size.Height) / (comboHeight + comboMargin);
+            
+
+            for (int i=0; i<count; i++)
+            {
+                int y = (comboHeight + comboMargin) * i;
+
+                ComboBox combo = new ComboBox();
+                combo.AllowDrop = true;
+                combo.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+                combo.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
+                combo.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+                combo.FormattingEnabled = true;
+                combo.IntegralHeight = false;
+                combo.Size = new System.Drawing.Size(107, comboHeight);
+                combo.Location = new System.Drawing.Point(24, y);
+                combo.DataSource = new BindingList<string>(tags);
+                combo.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
+                combo.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
+                combo.Leave += (s, e) => ((ComboBox)s).SelectionLength = 0;
+
+                pnlRight.Controls.Add(combo);
+                combo.SelectedIndex = (index < tags.Count ? index++ : -1);
+
+                Button btnAddTag = new Button();
+                btnAddTag.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+                btnAddTag.ForeColor = System.Drawing.Color.White;
+                btnAddTag.Location = new System.Drawing.Point(4, y+2);
+                btnAddTag.Name = "button1";
+                btnAddTag.Size = new System.Drawing.Size(19, 30);
+                btnAddTag.TabIndex = 12;
+                btnAddTag.Text = "+";
+                btnAddTag.UseVisualStyleBackColor = true;
+                btnAddTag.Click += new System.EventHandler(this.btnAddTag_Click);
+                btnAddTag.Tag = combo;
+
+                tooltip.SetToolTip(btnAddTag, "Add to current image/batch tags");
+
+                pnlRight.Controls.Add(btnAddTag);
+            }
+
+            pnlRight.ResumeLayout();
         }
 
         #endregion
@@ -1500,6 +1578,28 @@ namespace ImageTagger
             }
 
             return images;
+        }
+
+        internal void PurgeDeleted()
+        {
+            List<string> toDelete = new List<string>();
+
+            foreach(string filepath in this.images.Keys)
+            {
+                if (!File.Exists(filepath))
+                    toDelete.Add(filepath);
+            }
+
+            foreach (string filepath in toDelete)
+            {
+                TaggedImage image = this.images[filepath];
+                foreach (string tag in image.tags)
+                {
+                    this.tags[tag].Remove(image);
+                }
+
+                this.images.Remove(filepath);
+            }
         }
     }
 

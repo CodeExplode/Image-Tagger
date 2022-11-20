@@ -38,6 +38,7 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmImageTaggerMain));
             this.pnlLeft = new System.Windows.Forms.Panel();
             this.pnlLeftFlow = new System.Windows.Forms.FlowLayoutPanel();
+            this.pnlFilterHeader = new System.Windows.Forms.Panel();
             this.lblFilter = new System.Windows.Forms.Label();
             this.pnlResizableFilter = new System.Windows.Forms.Panel();
             this.tagSelectorFilter = new ImageTagger.TagsSelector();
@@ -45,6 +46,7 @@
             this.pnlBatch = new System.Windows.Forms.Panel();
             this.btnExitBatch = new System.Windows.Forms.Button();
             this.chkBatchTag = new System.Windows.Forms.CheckBox();
+            this.pnlTagsHeader = new System.Windows.Forms.Panel();
             this.lblTags = new System.Windows.Forms.Label();
             this.pnlResizableTags = new System.Windows.Forms.Panel();
             this.tagsSelectorImage = new ImageTagger.TagsSelector();
@@ -70,31 +72,16 @@
             this.cmbInterpolationModes = new System.Windows.Forms.ComboBox();
             this.btnCollapseSidePanel = new System.Windows.Forms.Button();
             this.pnlRight = new System.Windows.Forms.Panel();
-            this.comboBox5 = new System.Windows.Forms.ComboBox();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.comboBox2 = new System.Windows.Forms.ComboBox();
-            this.comboBox3 = new System.Windows.Forms.ComboBox();
-            this.comboBox4 = new System.Windows.Forms.ComboBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.cmbTagDrag_13 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_12 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_11 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_10 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_9 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_8 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_7 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_6 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_5 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_4 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_3 = new System.Windows.Forms.ComboBox();
-            this.cmbTagDrag_2 = new System.Windows.Forms.ComboBox();
+            this.button1 = new System.Windows.Forms.Button();
+            this.lblDragDrop = new System.Windows.Forms.Label();
             this.cmbTagDrag_1 = new System.Windows.Forms.ComboBox();
-            this.pnlFilterHeader = new System.Windows.Forms.Panel();
-            this.pnlTagsHeader = new System.Windows.Forms.Panel();
+            this.btnPurge = new System.Windows.Forms.Button();
             this.pnlLeft.SuspendLayout();
             this.pnlLeftFlow.SuspendLayout();
+            this.pnlFilterHeader.SuspendLayout();
             this.pnlResizableFilter.SuspendLayout();
             this.pnlBatch.SuspendLayout();
+            this.pnlTagsHeader.SuspendLayout();
             this.pnlResizableTags.SuspendLayout();
             this.pnlResizableTrainingBounds.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).BeginInit();
@@ -102,8 +89,6 @@
             this.pnlSettings.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numScrollSpeed)).BeginInit();
             this.pnlRight.SuspendLayout();
-            this.pnlFilterHeader.SuspendLayout();
-            this.pnlTagsHeader.SuspendLayout();
             this.SuspendLayout();
             // 
             // pnlLeft
@@ -114,7 +99,7 @@
             this.pnlLeft.Controls.Add(this.pnlLeftFlow);
             this.pnlLeft.Location = new System.Drawing.Point(0, 0);
             this.pnlLeft.Name = "pnlLeft";
-            this.pnlLeft.Size = new System.Drawing.Size(141, 1002);
+            this.pnlLeft.Size = new System.Drawing.Size(141, 733);
             this.pnlLeft.TabIndex = 2;
             // 
             // pnlLeftFlow
@@ -136,9 +121,18 @@
             this.pnlLeftFlow.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.pnlLeftFlow.Location = new System.Drawing.Point(0, 0);
             this.pnlLeftFlow.Name = "pnlLeftFlow";
-            this.pnlLeftFlow.Size = new System.Drawing.Size(139, 1000);
+            this.pnlLeftFlow.Size = new System.Drawing.Size(139, 731);
             this.pnlLeftFlow.TabIndex = 0;
             this.pnlLeftFlow.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
+            // 
+            // pnlFilterHeader
+            // 
+            this.pnlFilterHeader.Controls.Add(this.lblFilter);
+            this.pnlFilterHeader.Location = new System.Drawing.Point(3, 0);
+            this.pnlFilterHeader.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
+            this.pnlFilterHeader.Name = "pnlFilterHeader";
+            this.pnlFilterHeader.Size = new System.Drawing.Size(133, 15);
+            this.pnlFilterHeader.TabIndex = 17;
             // 
             // lblFilter
             // 
@@ -231,6 +225,15 @@
             this.chkBatchTag.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.chkBatchTag.UseVisualStyleBackColor = false;
             this.chkBatchTag.CheckedChanged += new System.EventHandler(this.chkBatchTag_CheckedChanged);
+            // 
+            // pnlTagsHeader
+            // 
+            this.pnlTagsHeader.Controls.Add(this.lblTags);
+            this.pnlTagsHeader.Location = new System.Drawing.Point(3, 216);
+            this.pnlTagsHeader.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
+            this.pnlTagsHeader.Name = "pnlTagsHeader";
+            this.pnlTagsHeader.Size = new System.Drawing.Size(133, 15);
+            this.pnlTagsHeader.TabIndex = 16;
             // 
             // lblTags
             // 
@@ -471,13 +474,14 @@
             // 
             // pnlSettings
             // 
+            this.pnlSettings.Controls.Add(this.btnPurge);
             this.pnlSettings.Controls.Add(this.lblScrollSpeed);
             this.pnlSettings.Controls.Add(this.numScrollSpeed);
             this.pnlSettings.Controls.Add(this.btnChangeBackground);
             this.pnlSettings.Controls.Add(this.cmbInterpolationModes);
             this.pnlSettings.Location = new System.Drawing.Point(3, 612);
             this.pnlSettings.Name = "pnlSettings";
-            this.pnlSettings.Size = new System.Drawing.Size(133, 63);
+            this.pnlSettings.Size = new System.Drawing.Size(133, 88);
             this.pnlSettings.TabIndex = 15;
             this.pnlSettings.Visible = false;
             // 
@@ -548,7 +552,7 @@
             this.btnCollapseSidePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(103)))), ((int)(((byte)(106)))), ((int)(((byte)(109)))));
             this.btnCollapseSidePanel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnCollapseSidePanel.ForeColor = System.Drawing.Color.White;
-            this.btnCollapseSidePanel.Location = new System.Drawing.Point(140, 960);
+            this.btnCollapseSidePanel.Location = new System.Drawing.Point(140, 691);
             this.btnCollapseSidePanel.Name = "btnCollapseSidePanel";
             this.btnCollapseSidePanel.Size = new System.Drawing.Size(19, 42);
             this.btnCollapseSidePanel.TabIndex = 3;
@@ -562,297 +566,38 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.pnlRight.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(103)))), ((int)(((byte)(106)))), ((int)(((byte)(109)))));
             this.pnlRight.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.pnlRight.Controls.Add(this.comboBox5);
-            this.pnlRight.Controls.Add(this.comboBox1);
-            this.pnlRight.Controls.Add(this.comboBox2);
-            this.pnlRight.Controls.Add(this.comboBox3);
-            this.pnlRight.Controls.Add(this.comboBox4);
-            this.pnlRight.Controls.Add(this.label1);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_13);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_12);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_11);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_10);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_9);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_8);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_7);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_6);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_5);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_4);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_3);
-            this.pnlRight.Controls.Add(this.cmbTagDrag_2);
+            this.pnlRight.Controls.Add(this.button1);
+            this.pnlRight.Controls.Add(this.lblDragDrop);
             this.pnlRight.Controls.Add(this.cmbTagDrag_1);
             this.pnlRight.Location = new System.Drawing.Point(1077, 0);
             this.pnlRight.Name = "pnlRight";
-            this.pnlRight.Size = new System.Drawing.Size(141, 1002);
+            this.pnlRight.Size = new System.Drawing.Size(141, 733);
             this.pnlRight.TabIndex = 4;
             this.pnlRight.Visible = false;
             // 
-            // comboBox5
+            // button1
             // 
-            this.comboBox5.AllowDrop = true;
-            this.comboBox5.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.comboBox5.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.comboBox5.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.comboBox5.FormattingEnabled = true;
-            this.comboBox5.IntegralHeight = false;
-            this.comboBox5.Location = new System.Drawing.Point(8, 966);
-            this.comboBox5.Name = "comboBox5";
-            this.comboBox5.Size = new System.Drawing.Size(123, 33);
-            this.comboBox5.TabIndex = 17;
-            this.comboBox5.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.comboBox5.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
+            this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button1.ForeColor = System.Drawing.Color.White;
+            this.button1.Location = new System.Drawing.Point(4, 50);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(19, 30);
+            this.button1.TabIndex = 12;
+            this.button1.Text = "+";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.btnAddTag_Click);
             // 
-            // comboBox1
+            // lblDragDrop
             // 
-            this.comboBox1.AllowDrop = true;
-            this.comboBox1.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.comboBox1.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.comboBox1.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.IntegralHeight = false;
-            this.comboBox1.Location = new System.Drawing.Point(8, 912);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(123, 33);
-            this.comboBox1.TabIndex = 16;
-            this.comboBox1.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.comboBox1.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // comboBox2
-            // 
-            this.comboBox2.AllowDrop = true;
-            this.comboBox2.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.comboBox2.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.comboBox2.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.IntegralHeight = false;
-            this.comboBox2.Location = new System.Drawing.Point(8, 858);
-            this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(123, 33);
-            this.comboBox2.TabIndex = 15;
-            this.comboBox2.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.comboBox2.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // comboBox3
-            // 
-            this.comboBox3.AllowDrop = true;
-            this.comboBox3.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.comboBox3.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.comboBox3.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.comboBox3.FormattingEnabled = true;
-            this.comboBox3.IntegralHeight = false;
-            this.comboBox3.Location = new System.Drawing.Point(8, 804);
-            this.comboBox3.Name = "comboBox3";
-            this.comboBox3.Size = new System.Drawing.Size(123, 33);
-            this.comboBox3.TabIndex = 14;
-            this.comboBox3.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.comboBox3.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // comboBox4
-            // 
-            this.comboBox4.AllowDrop = true;
-            this.comboBox4.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.comboBox4.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.comboBox4.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.comboBox4.FormattingEnabled = true;
-            this.comboBox4.IntegralHeight = false;
-            this.comboBox4.Location = new System.Drawing.Point(8, 750);
-            this.comboBox4.Name = "comboBox4";
-            this.comboBox4.Size = new System.Drawing.Size(123, 33);
-            this.comboBox4.TabIndex = 13;
-            this.comboBox4.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.comboBox4.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // label1
-            // 
-            this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.ForeColor = System.Drawing.Color.White;
-            this.label1.Location = new System.Drawing.Point(4, -4);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(133, 49);
-            this.label1.TabIndex = 11;
-            this.label1.Text = "Drag & Drop Images Into Tags";
-            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.label1.UseMnemonic = false;
-            // 
-            // cmbTagDrag_13
-            // 
-            this.cmbTagDrag_13.AllowDrop = true;
-            this.cmbTagDrag_13.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_13.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_13.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_13.FormattingEnabled = true;
-            this.cmbTagDrag_13.IntegralHeight = false;
-            this.cmbTagDrag_13.Location = new System.Drawing.Point(8, 696);
-            this.cmbTagDrag_13.Name = "cmbTagDrag_13";
-            this.cmbTagDrag_13.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_13.TabIndex = 12;
-            this.cmbTagDrag_13.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_13.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_12
-            // 
-            this.cmbTagDrag_12.AllowDrop = true;
-            this.cmbTagDrag_12.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_12.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_12.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_12.FormattingEnabled = true;
-            this.cmbTagDrag_12.IntegralHeight = false;
-            this.cmbTagDrag_12.Location = new System.Drawing.Point(8, 642);
-            this.cmbTagDrag_12.Name = "cmbTagDrag_12";
-            this.cmbTagDrag_12.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_12.TabIndex = 11;
-            this.cmbTagDrag_12.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_12.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_11
-            // 
-            this.cmbTagDrag_11.AllowDrop = true;
-            this.cmbTagDrag_11.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_11.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_11.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_11.FormattingEnabled = true;
-            this.cmbTagDrag_11.IntegralHeight = false;
-            this.cmbTagDrag_11.Location = new System.Drawing.Point(8, 588);
-            this.cmbTagDrag_11.Name = "cmbTagDrag_11";
-            this.cmbTagDrag_11.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_11.TabIndex = 10;
-            this.cmbTagDrag_11.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_11.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_10
-            // 
-            this.cmbTagDrag_10.AllowDrop = true;
-            this.cmbTagDrag_10.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_10.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_10.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_10.FormattingEnabled = true;
-            this.cmbTagDrag_10.IntegralHeight = false;
-            this.cmbTagDrag_10.Location = new System.Drawing.Point(8, 534);
-            this.cmbTagDrag_10.Name = "cmbTagDrag_10";
-            this.cmbTagDrag_10.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_10.TabIndex = 9;
-            this.cmbTagDrag_10.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_10.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_9
-            // 
-            this.cmbTagDrag_9.AllowDrop = true;
-            this.cmbTagDrag_9.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_9.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_9.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_9.FormattingEnabled = true;
-            this.cmbTagDrag_9.IntegralHeight = false;
-            this.cmbTagDrag_9.Location = new System.Drawing.Point(8, 480);
-            this.cmbTagDrag_9.Name = "cmbTagDrag_9";
-            this.cmbTagDrag_9.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_9.TabIndex = 8;
-            this.cmbTagDrag_9.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_9.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_8
-            // 
-            this.cmbTagDrag_8.AllowDrop = true;
-            this.cmbTagDrag_8.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_8.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_8.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_8.FormattingEnabled = true;
-            this.cmbTagDrag_8.IntegralHeight = false;
-            this.cmbTagDrag_8.Location = new System.Drawing.Point(8, 426);
-            this.cmbTagDrag_8.Name = "cmbTagDrag_8";
-            this.cmbTagDrag_8.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_8.TabIndex = 7;
-            this.cmbTagDrag_8.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_8.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_7
-            // 
-            this.cmbTagDrag_7.AllowDrop = true;
-            this.cmbTagDrag_7.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_7.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_7.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_7.FormattingEnabled = true;
-            this.cmbTagDrag_7.IntegralHeight = false;
-            this.cmbTagDrag_7.Location = new System.Drawing.Point(8, 372);
-            this.cmbTagDrag_7.Name = "cmbTagDrag_7";
-            this.cmbTagDrag_7.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_7.TabIndex = 6;
-            this.cmbTagDrag_7.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_7.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_6
-            // 
-            this.cmbTagDrag_6.AllowDrop = true;
-            this.cmbTagDrag_6.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_6.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_6.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_6.FormattingEnabled = true;
-            this.cmbTagDrag_6.IntegralHeight = false;
-            this.cmbTagDrag_6.Location = new System.Drawing.Point(8, 318);
-            this.cmbTagDrag_6.Name = "cmbTagDrag_6";
-            this.cmbTagDrag_6.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_6.TabIndex = 5;
-            this.cmbTagDrag_6.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_6.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_5
-            // 
-            this.cmbTagDrag_5.AllowDrop = true;
-            this.cmbTagDrag_5.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_5.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_5.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_5.FormattingEnabled = true;
-            this.cmbTagDrag_5.IntegralHeight = false;
-            this.cmbTagDrag_5.Location = new System.Drawing.Point(8, 264);
-            this.cmbTagDrag_5.Name = "cmbTagDrag_5";
-            this.cmbTagDrag_5.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_5.TabIndex = 4;
-            this.cmbTagDrag_5.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_5.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_4
-            // 
-            this.cmbTagDrag_4.AllowDrop = true;
-            this.cmbTagDrag_4.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_4.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_4.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_4.FormattingEnabled = true;
-            this.cmbTagDrag_4.IntegralHeight = false;
-            this.cmbTagDrag_4.Location = new System.Drawing.Point(8, 210);
-            this.cmbTagDrag_4.Name = "cmbTagDrag_4";
-            this.cmbTagDrag_4.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_4.TabIndex = 3;
-            this.cmbTagDrag_4.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_4.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_3
-            // 
-            this.cmbTagDrag_3.AllowDrop = true;
-            this.cmbTagDrag_3.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_3.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_3.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_3.FormattingEnabled = true;
-            this.cmbTagDrag_3.IntegralHeight = false;
-            this.cmbTagDrag_3.Location = new System.Drawing.Point(8, 156);
-            this.cmbTagDrag_3.Name = "cmbTagDrag_3";
-            this.cmbTagDrag_3.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_3.TabIndex = 2;
-            this.cmbTagDrag_3.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_3.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
-            // 
-            // cmbTagDrag_2
-            // 
-            this.cmbTagDrag_2.AllowDrop = true;
-            this.cmbTagDrag_2.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-            this.cmbTagDrag_2.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
-            this.cmbTagDrag_2.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cmbTagDrag_2.FormattingEnabled = true;
-            this.cmbTagDrag_2.IntegralHeight = false;
-            this.cmbTagDrag_2.Location = new System.Drawing.Point(8, 102);
-            this.cmbTagDrag_2.Name = "cmbTagDrag_2";
-            this.cmbTagDrag_2.Size = new System.Drawing.Size(123, 33);
-            this.cmbTagDrag_2.TabIndex = 1;
-            this.cmbTagDrag_2.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
-            this.cmbTagDrag_2.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
+            this.lblDragDrop.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblDragDrop.ForeColor = System.Drawing.Color.White;
+            this.lblDragDrop.Location = new System.Drawing.Point(4, -4);
+            this.lblDragDrop.Name = "lblDragDrop";
+            this.lblDragDrop.Size = new System.Drawing.Size(133, 49);
+            this.lblDragDrop.TabIndex = 11;
+            this.lblDragDrop.Text = "Drag & Drop Images Into Tags";
+            this.lblDragDrop.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblDragDrop.UseMnemonic = false;
             // 
             // cmbTagDrag_1
             // 
@@ -862,30 +607,26 @@
             this.cmbTagDrag_1.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cmbTagDrag_1.FormattingEnabled = true;
             this.cmbTagDrag_1.IntegralHeight = false;
-            this.cmbTagDrag_1.Location = new System.Drawing.Point(8, 48);
+            this.cmbTagDrag_1.Location = new System.Drawing.Point(24, 48);
             this.cmbTagDrag_1.Name = "cmbTagDrag_1";
-            this.cmbTagDrag_1.Size = new System.Drawing.Size(123, 33);
+            this.cmbTagDrag_1.Size = new System.Drawing.Size(107, 33);
             this.cmbTagDrag_1.TabIndex = 0;
             this.cmbTagDrag_1.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
             this.cmbTagDrag_1.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
             // 
-            // pnlFilterHeader
+            // btnPurge
             // 
-            this.pnlFilterHeader.Controls.Add(this.lblFilter);
-            this.pnlFilterHeader.Location = new System.Drawing.Point(3, 0);
-            this.pnlFilterHeader.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
-            this.pnlFilterHeader.Name = "pnlFilterHeader";
-            this.pnlFilterHeader.Size = new System.Drawing.Size(133, 15);
-            this.pnlFilterHeader.TabIndex = 17;
-            // 
-            // pnlTagsHeader
-            // 
-            this.pnlTagsHeader.Controls.Add(this.lblTags);
-            this.pnlTagsHeader.Location = new System.Drawing.Point(3, 216);
-            this.pnlTagsHeader.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
-            this.pnlTagsHeader.Name = "pnlTagsHeader";
-            this.pnlTagsHeader.Size = new System.Drawing.Size(133, 15);
-            this.pnlTagsHeader.TabIndex = 16;
+            this.btnPurge.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.btnPurge.BackColor = System.Drawing.Color.Transparent;
+            this.btnPurge.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPurge.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.btnPurge.Location = new System.Drawing.Point(6, 61);
+            this.btnPurge.Name = "btnPurge";
+            this.btnPurge.Size = new System.Drawing.Size(121, 23);
+            this.btnPurge.TabIndex = 22;
+            this.btnPurge.Text = "Purge Deleted";
+            this.btnPurge.UseVisualStyleBackColor = false;
+            this.btnPurge.Click += new System.EventHandler(this.btnPurge_Click);
             // 
             // frmImageTaggerMain
             // 
@@ -893,7 +634,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(214)))), ((int)(((byte)(222)))), ((int)(((byte)(212)))));
-            this.ClientSize = new System.Drawing.Size(1216, 1002);
+            this.ClientSize = new System.Drawing.Size(1216, 733);
             this.Controls.Add(this.pnlRight);
             this.Controls.Add(this.btnCollapseSidePanel);
             this.Controls.Add(this.pnlLeft);
@@ -916,9 +657,13 @@
             this.pnlLeft.ResumeLayout(false);
             this.pnlLeftFlow.ResumeLayout(false);
             this.pnlLeftFlow.PerformLayout();
+            this.pnlFilterHeader.ResumeLayout(false);
+            this.pnlFilterHeader.PerformLayout();
             this.pnlResizableFilter.ResumeLayout(false);
             this.pnlBatch.ResumeLayout(false);
             this.pnlBatch.PerformLayout();
+            this.pnlTagsHeader.ResumeLayout(false);
+            this.pnlTagsHeader.PerformLayout();
             this.pnlResizableTags.ResumeLayout(false);
             this.pnlResizableTrainingBounds.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.gridTrainingSources)).EndInit();
@@ -928,10 +673,6 @@
             this.pnlSettings.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numScrollSpeed)).EndInit();
             this.pnlRight.ResumeLayout(false);
-            this.pnlFilterHeader.ResumeLayout(false);
-            this.pnlFilterHeader.PerformLayout();
-            this.pnlTagsHeader.ResumeLayout(false);
-            this.pnlTagsHeader.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -971,27 +712,12 @@
         private TagsSelector tagsSelectorImage;
         private TagsSelector tagSelectorFilter;
         private System.Windows.Forms.Panel pnlRight;
-        private System.Windows.Forms.ComboBox cmbTagDrag_13;
-        private System.Windows.Forms.ComboBox cmbTagDrag_12;
-        private System.Windows.Forms.ComboBox cmbTagDrag_11;
-        private System.Windows.Forms.ComboBox cmbTagDrag_10;
-        private System.Windows.Forms.ComboBox cmbTagDrag_9;
-        private System.Windows.Forms.ComboBox cmbTagDrag_8;
-        private System.Windows.Forms.ComboBox cmbTagDrag_7;
-        private System.Windows.Forms.ComboBox cmbTagDrag_6;
-        private System.Windows.Forms.ComboBox cmbTagDrag_5;
-        private System.Windows.Forms.ComboBox cmbTagDrag_4;
-        private System.Windows.Forms.ComboBox cmbTagDrag_3;
-        private System.Windows.Forms.ComboBox cmbTagDrag_2;
         private System.Windows.Forms.ComboBox cmbTagDrag_1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.ComboBox comboBox1;
-        private System.Windows.Forms.ComboBox comboBox2;
-        private System.Windows.Forms.ComboBox comboBox3;
-        private System.Windows.Forms.ComboBox comboBox4;
-        private System.Windows.Forms.ComboBox comboBox5;
+        private System.Windows.Forms.Label lblDragDrop;
         private System.Windows.Forms.Panel pnlFilterHeader;
         private System.Windows.Forms.Panel pnlTagsHeader;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button btnPurge;
     }
 }
 
