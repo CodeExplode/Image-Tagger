@@ -8,6 +8,7 @@ using System.Drawing.Drawing2D;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
 
 
 // TODO
@@ -26,9 +27,9 @@ using System.Text;
 // + allow minimum zoom to at least be the original size of the picture, for small pictures
 // + maybe add an auto-zoom checkbox to settings, or a max auto size option (with 1x being no resizing)
 // + undo/redo on selection sizing
-// + when change tag may remove item from current search filter, maybe need to check when scroll
-
 // + when filtering, maybe start with tag with smallest list of images, so less to compare and remove later on
+// + on txtTags change do a syntax validation, check all words except current. On short timer check current word too
+//      colour the tag if it's an existing or new tag, maybe also colour or scale font for frequency
 
 namespace ImageTagger
 {
@@ -63,6 +64,11 @@ namespace ImageTagger
 
         private void form_Load(object sender, EventArgs e)
         {
+            if (Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Length > 1)
+            {
+                MessageBox.Show("Warning, image tagger is already open");
+            }
+
             cmbInterpolationModes.DataSource = new BindingList<InterpolationMode>() {
                 InterpolationMode.NearestNeighbor,
                 InterpolationMode.Bilinear,
@@ -164,20 +170,13 @@ namespace ImageTagger
         private void btnAddTag_Click(object sender, EventArgs e)
         {
             ComboBox combo = (ComboBox)(((Button)sender).Tag);
-            
-            if (combo.Items.Count == 0 || combo.SelectedItem == null || gallery.images.Count == 0) return;
 
-            string tag = combo.SelectedItem.ToString();
+            //if (combo.Items.Count == 0 || combo.SelectedItem == null || gallery.images.Count == 0) return;
+            if (combo.Text == "" || gallery.images.Count == 0) return;
 
-            // very hacky way to do this but avoids doubling up on code
-            if (!(txtTags.Text.EndsWith(",") || txtTags.Text.EndsWith(", ")))
-                txtTags.Text += ", ";
+            string tag = combo.Text; //combo.SelectedItem.ToString(); // allow any text, not just pre-existing tags at time loaded
 
-            txtTags.Text += tag;
-
-            ApplyTagsText();
-            //DisplayTags();
-
+            PasteTagText(tag);
             ClearFocus(); // try to solve combo box text staying selected
         }
 
@@ -266,6 +265,8 @@ namespace ImageTagger
 
         protected override void OnPaint(PaintEventArgs paintEventArgs)
         {
+            if (gallery == null) return; // can happen due to startup error message of app already being opened
+
             Image image = gallery.CurrentImageData();
 
             if (image != null)
@@ -319,6 +320,7 @@ namespace ImageTagger
                 float diffRight = DisplayRectangle.Width - (imageBounds.X + (1 + pan.X) * imageBounds.Width);
 
                 if (pnlLeft.Visible) diffLeft -= pnlLeft.Size.Width; // allow tolerance for panning to reveal picture hidden under panel
+                if (pnlRight.Visible) diffRight -= pnlRight.Size.Width;
 
                 if (diffLeft > 0) pan.X -= diffLeft / imageBounds.Width;
                 if (diffRight > 0) pan.X += diffRight / imageBounds.Width;
@@ -454,6 +456,30 @@ namespace ImageTagger
                     SetBatchMode(!this.inBatchMode);
                     return true;
                 }
+
+                if (keyData == Keys.F)
+                {
+                    TaggedImage image = gallery.CurrentImage();
+                    Image imageData = gallery.CurrentImageData();
+                    int selectionIndex = gridTrainingSources.CurrentCell.RowIndex;
+
+                    if (image != null && imageData != null) {
+                        if (selectionIndex > image.selections.Length / 4) // handle blank row at end
+                            selectionIndex = 0;
+
+                        TrainingData_Fit(image, imageData, true, selectionIndex);
+                        Repaint();
+                        TrainingData_PopulateGrid(true);
+                        return true;
+                    }
+                }
+
+                if (keyData == (Keys.Control | Keys.V))
+                {
+                    string text = Clipboard.GetText();
+                    PasteTagText(text);
+                    return true;
+                }
             }
 
             return base.ProcessCmdKey(ref msg, keyData); // https://stackoverflow.com/a/34168026
@@ -502,6 +528,7 @@ namespace ImageTagger
             if (trainingDragMode != TrainingAreaDragMode.none)
             {
                 trainingDragMode = TrainingAreaDragMode.none;
+                ClearFocus(); // annoyingly hard to clear focus when clicking on the training area, maybe need a mousemove event beyond a threshold to consider activated
             }
 
             // only consider it a click if the image wasn't dragged (could replace with doneDrag)
@@ -570,7 +597,6 @@ namespace ImageTagger
 
         private void chkChangeBackground_Click(object sender, EventArgs e)
         {
-            // https://stackoverflow.com/a/21049848
             ColorDialog clrDialog = new ColorDialog();
 
             clrDialog.Color = this.BackColor;
@@ -646,7 +672,9 @@ namespace ImageTagger
 
         private void btnPurge_Click(object sender, EventArgs e)
         {
-            database.PurgeDeleted();
+            int purged = database.PurgeDeleted();
+
+            MessageBox.Show($"Purged {purged} image references from the database");
         }
 
         #endregion
@@ -789,7 +817,6 @@ namespace ImageTagger
                 }
             }
         }
-
 
         private void lblFilter_Click(object sender, EventArgs e)
         {
@@ -941,28 +968,57 @@ namespace ImageTagger
             pnlRight.ResumeLayout();
         }
 
+        private void PasteTagText(string text)
+        {
+            if (txtTags.Text.Length > 0 && !(txtTags.Text.EndsWith(",") || txtTags.Text.EndsWith(", ")) && !text.StartsWith(","))
+                txtTags.Text += ", ";
+
+            txtTags.Text += text + ", ";
+
+            ApplyTagsText();
+            //DisplayTags();
+        }
+
+        private void btnCopyAllTags_Click(object sender, EventArgs e)
+        {
+            StringBuilder allTags = new StringBuilder();
+
+            List<KeyValuePair<string, List<TaggedImage>>> sortedTagsByImages = database.tags.ToList();
+            sortedTagsByImages.Sort((x, y) => y.Value.Count.CompareTo(x.Value.Count)); // https://stackoverflow.com/a/14544974
+
+            for (int i = 0, count = sortedTagsByImages.Count; i < count; i++)
+                allTags.Append(sortedTagsByImages[i].Key + ", ");
+
+            Clipboard.SetText(allTags.ToString());
+        }
+
         #endregion
 
 
         #region TRAINING AREA
 
-        private void TrainingData_EnsureDefaults(TaggedImage image, Image imageData)
+        private void TrainingData_Fit(TaggedImage image, Image imageData, bool force, int selectionIndex=0)
         {
             // not reading images when first loaded into the database (too slow), so instead populate initial selection values when need them
-            if (image.selections.Length == 0)
+            if (image.selections.Length == 0 || force)
             {
                 Image currentImageData = gallery.CurrentImageData();
 
                 if (currentImageData != null)
                 {
-                    int imgW = currentImageData.Width;
-                    int imgH = currentImageData.Height;
+                    Rectangle selection = Util.GetValidAspectSelection(currentImageData.Width, currentImageData.Height);
+                    //image.selections = new int[] { selection.X, selection.Y, selection.Width, selection.Height };
 
-                    int square_size = Math.Min(imgW, imgH);
-                    int x = (square_size == imgW) ? 0 : Math.Max(0, imgW / 2 - square_size / 2);
-                    int y = (square_size == imgH) ? 0 : Math.Max(0, imgH / 2 - square_size / 2);
+                    if (image.selections.Length == 0)
+                    {
+                        image.selections = new int[4];
+                        selectionIndex = 0;
+                    }
 
-                    image.selections = new int[] { x, y, square_size, square_size };
+                    image.selections[selectionIndex * 4 + 0] = selection.X;
+                    image.selections[selectionIndex * 4 + 1] = selection.Y;
+                    image.selections[selectionIndex * 4 + 2] = selection.Width;
+                    image.selections[selectionIndex * 4 + 3] = selection.Height;
                 }
             }
         }
@@ -978,7 +1034,7 @@ namespace ImageTagger
         private void TrainingData_PopulateGrid(bool maintainPosition)
         {
             TaggedImage currentImage = gallery.CurrentImage();
-            TrainingData_EnsureDefaults(currentImage, gallery.CurrentImageData());
+            TrainingData_Fit(currentImage, gallery.CurrentImageData(), false);
 
             int[] selections = currentImage.selections;
 
@@ -1021,8 +1077,9 @@ namespace ImageTagger
                         h = selections[i + 3],
                         gcd = Util.GreatestCommonDivisor(w, h);
 
-                    string aspect = $"{w / gcd}:{h / gcd}";
-
+                    //string aspect = $"{w / gcd}:{h / gcd}";
+                    string aspect = String.Format("{0:0.0#}", w / (double)h); // easier to read in small space
+                    
                     //if (aspect.Length > 4) aspect = $"{(w/(float)h):#.#}";
 
                     row.Cells[4].Value = aspect;
@@ -1147,7 +1204,7 @@ namespace ImageTagger
             Array.Copy(selections, rowIndex * 4, trainingDragBounds, 0, 4);
         }
 
-        private void DragTrainingBounds(int deltaX, int deltaY, bool diagonalsMaintainAspect)
+        private void DragTrainingBounds(int deltaX, int deltaY, bool snapping)
         {
             // account for how the image is currently scaled to the screen
             Image image = gallery.CurrentImageData();
@@ -1180,7 +1237,8 @@ namespace ImageTagger
             }
 
             // probably not the best way to do this, but it works for now
-            if (diagonalsMaintainAspect && (mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR))
+            // new snapping when doing diagonal resizing, not needed when have SD aspect snapping enabled
+            /*if (snapping && (mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerTR || mode == TrainingAreaDragMode.cornerBL || mode == TrainingAreaDragMode.cornerBR))
             {
                 int gcd = Util.GreatestCommonDivisor(w, h);
                 int widthIntervals = w / gcd;
@@ -1218,7 +1276,7 @@ namespace ImageTagger
 
                 deltaX = steps * widthIntervals * (posX ? 1 : -1);
                 deltaY = steps * heightIntervals * (posY ? 1 : -1);
-            }
+            }*/
 
 
             if (mode == TrainingAreaDragMode.left || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerBL)
@@ -1251,7 +1309,6 @@ namespace ImageTagger
                 h += deltaY;
             }
 
-            /*// old snapping to valid SD aspect ratios for all images, not very useful it turns out
             if (snapping && mode != TrainingAreaDragMode.centre)
             {
                 bool left = (mode == TrainingAreaDragMode.left || mode == TrainingAreaDragMode.cornerTL || mode == TrainingAreaDragMode.cornerBL);
@@ -1261,8 +1318,8 @@ namespace ImageTagger
                 int yMove = top ? (y - selections[rowIndex * 4 + 1]) : (h - selections[rowIndex * 4 + 3]);
 
                 if (xMove != 0 || yMove != 0)
-                    Util.SnapToAspectRatio(ref x, ref y, ref w, ref h, imgW, imgH, xMove, yMove, left, top);
-            }*/
+                    Util.SnapToSDAspectRatio(ref x, ref y, ref w, ref h, imgW, imgH, xMove, yMove, left, top);
+            }
 
             if (w != 0 && h != 0)
             {
@@ -1321,6 +1378,10 @@ namespace ImageTagger
 
             if (pnlRight.Visible)
                 PopulateDragDropTags();
+
+            // if revealed right side, need to repaint
+            if (!pnlRight.Visible)
+                Repaint();
         }
 
         private void lblDatabase_Click(object sender, EventArgs e)
@@ -1392,6 +1453,9 @@ namespace ImageTagger
 
         public TaggedImage CurrentImage()
         {
+            if (this.images.Count == 0)
+                return null;
+
             return this.images[this.index];
         }
 
@@ -1580,7 +1644,7 @@ namespace ImageTagger
             return images;
         }
 
-        internal void PurgeDeleted()
+        internal int PurgeDeleted()
         {
             List<string> toDelete = new List<string>();
 
@@ -1600,6 +1664,8 @@ namespace ImageTagger
 
                 this.images.Remove(filepath);
             }
+
+            return toDelete.Count;
         }
     }
 
@@ -1718,7 +1784,7 @@ namespace ImageTagger
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
-            //base.OnMouseClick(e);
+            base.OnMouseClick(e);
 
             TagButton clicked = GetTagButtonAt(e.Location.X, e.Location.Y);
 
@@ -2026,6 +2092,104 @@ namespace ImageTagger
             return sharedTags;
         }
 
+        public static void SnapToSDAspectRatio(ref int x, ref int y, ref int w, ref int h, int maxW, int maxH, int deltaX, int deltaY, bool movedLeft, bool movedTop)
+        {
+            // don't handle diagonal snapping, movements will be small enough that there's probably no benefit
+            if (deltaX != 0 && deltaY != 0)
+            {
+                if (Math.Abs(deltaX) > Math.Abs(deltaY)) deltaY = 0;
+                else deltaX = 0;
+            }
+
+            if (deltaX != 0)
+            {
+                SnapSideToAspectRatio(ref x, ref w, maxW, h, movedLeft);
+            }
+            else
+            {
+                SnapSideToAspectRatio(ref y, ref h, maxH, w, movedTop);
+            }
+
+        }
+
+        //public static double[] aspects = new double[] { 512 / 512d, 576 / 448d, 640 / 384d, 768 / 320d }; // 1, 1.285, 1.666, 2.4
+        //public static double[] aspects = new double[] { 512 / 512d, 576 / 512d, 640 / 512d, 704 / 512d, 768 / 512d, 832 / 512d, 896 / 512d, 960 / 512d }; // 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875
+        public static double[] aspects = new double[] { 512 / 512d, 576 / 512d, 640 / 512d, 704 / 512d, 768 / 512d, 832 / 512d }; // 1, 1.125, 1.25, 1.375, 1.5, 1.625
+
+        public static Rectangle GetValidAspectSelection(int width, int height)
+        {
+            Rectangle selection = new Rectangle(0, 0, width, height);
+
+            double aspect = width / (double)height;
+            double closest = 100;
+
+            for (int i=0, iLen=aspects.Length; i<iLen*2; i++)
+            {
+                double validAspect = (i < iLen ? aspects[i] : 1 / aspects[i - iLen]);
+
+                if (Math.Abs(aspect - validAspect) < Math.Abs(aspect - closest))
+                    closest = validAspect;
+            }
+            // https://stackoverflow.com/a/8541496
+            if (closest < 1) { // "tall" crop
+                selection.Width = Math.Min((int)(height * closest), width);
+                selection.Height = (int)(selection.Width / closest);
+            }
+            else
+            { // "wide" or square crop
+                selection.Height = Math.Min((int)(width / closest), height);
+                selection.Width = (int)(selection.Height * closest);
+            }
+
+            selection.X = (width - selection.Width) / 2;
+            selection.Y = (height - selection.Height) / 2;
+
+            return selection;
+        }
+
+        public static void SnapSideToAspectRatio(ref int start, ref int length, int maxLength, int otherLength, bool startSide)
+        {
+            if (length == 0 || otherLength == 0) return;
+
+            
+            double aspect = Math.Max(length, otherLength) / (double)Math.Min(length, otherLength);
+            int index = 0;
+            while (index < aspects.Length && aspect > aspects[index])
+                index++;
+
+            double prevAspect = aspects[Math.Max(index-1, 0)];
+            double nextAspect = aspects[Math.Min(index, aspects.Length-1)];
+
+            int prevL = (int)((length < otherLength ? 1 / prevAspect : prevAspect) * otherLength);
+            int nextL = (int)((length < otherLength ? 1 / nextAspect : nextAspect) * otherLength);
+
+            // moving x or y so will need to calculate the new width or height to maint the current right or bottom
+            if (startSide)
+            {
+                int end = start + length;
+                if (end - prevL < 0) prevL = int.MaxValue; // would put x/y below 0
+                if (start + nextL > end) nextL = int.MaxValue; // would put x/y past right/bottom of selection
+
+                if (prevL != int.MaxValue || nextL != int.MaxValue)
+                {
+                    int newStart = end - (Math.Abs(start - prevL) < Math.Abs(start - nextL) ? prevL : nextL);
+
+                    if (newStart != start)
+                        length -= newStart - start;
+
+                    start = newStart;
+                }
+            }
+            // moving the right or bottom so just need to calculate a new width or height
+            else
+            {
+                if (prevL <= 0) prevL = int.MaxValue; // would be negative width/height
+                if (start + nextL > maxLength) nextL = int.MaxValue; // would put the right/bottom outside of the image
+
+                if (prevL != int.MaxValue || nextL != int.MaxValue)
+                    length = (Math.Abs(start - prevL) < Math.Abs(start - nextL) ? prevL : nextL);
+            }
+        }
 
         public class ValidImageChecker
         {

@@ -66,6 +66,8 @@
             this.txtDatabase = new System.Windows.Forms.TextBox();
             this.lblSettings = new System.Windows.Forms.Label();
             this.pnlSettings = new System.Windows.Forms.Panel();
+            this.btnCopyAllTags = new System.Windows.Forms.Button();
+            this.btnPurge = new System.Windows.Forms.Button();
             this.lblScrollSpeed = new System.Windows.Forms.Label();
             this.numScrollSpeed = new System.Windows.Forms.NumericUpDown();
             this.btnChangeBackground = new System.Windows.Forms.Button();
@@ -75,7 +77,6 @@
             this.button1 = new System.Windows.Forms.Button();
             this.lblDragDrop = new System.Windows.Forms.Label();
             this.cmbTagDrag_1 = new System.Windows.Forms.ComboBox();
-            this.btnPurge = new System.Windows.Forms.Button();
             this.pnlLeft.SuspendLayout();
             this.pnlLeftFlow.SuspendLayout();
             this.pnlFilterHeader.SuspendLayout();
@@ -99,7 +100,7 @@
             this.pnlLeft.Controls.Add(this.pnlLeftFlow);
             this.pnlLeft.Location = new System.Drawing.Point(0, 0);
             this.pnlLeft.Name = "pnlLeft";
-            this.pnlLeft.Size = new System.Drawing.Size(141, 733);
+            this.pnlLeft.Size = new System.Drawing.Size(141, 752);
             this.pnlLeft.TabIndex = 2;
             // 
             // pnlLeftFlow
@@ -121,7 +122,7 @@
             this.pnlLeftFlow.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.pnlLeftFlow.Location = new System.Drawing.Point(0, 0);
             this.pnlLeftFlow.Name = "pnlLeftFlow";
-            this.pnlLeftFlow.Size = new System.Drawing.Size(139, 731);
+            this.pnlLeftFlow.Size = new System.Drawing.Size(139, 750);
             this.pnlLeftFlow.TabIndex = 0;
             this.pnlLeftFlow.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
             // 
@@ -172,6 +173,7 @@
             this.tagSelectorFilter.Size = new System.Drawing.Size(136, 128);
             this.tagSelectorFilter.TabIndex = 5;
             this.tagSelectorFilter.Visible = false;
+            this.tagSelectorFilter.MouseDown += new System.Windows.Forms.MouseEventHandler(this.clearFocus_click);
             // 
             // txtFilter
             // 
@@ -474,6 +476,7 @@
             // 
             // pnlSettings
             // 
+            this.pnlSettings.Controls.Add(this.btnCopyAllTags);
             this.pnlSettings.Controls.Add(this.btnPurge);
             this.pnlSettings.Controls.Add(this.lblScrollSpeed);
             this.pnlSettings.Controls.Add(this.numScrollSpeed);
@@ -481,9 +484,37 @@
             this.pnlSettings.Controls.Add(this.cmbInterpolationModes);
             this.pnlSettings.Location = new System.Drawing.Point(3, 612);
             this.pnlSettings.Name = "pnlSettings";
-            this.pnlSettings.Size = new System.Drawing.Size(133, 88);
+            this.pnlSettings.Size = new System.Drawing.Size(133, 121);
             this.pnlSettings.TabIndex = 15;
             this.pnlSettings.Visible = false;
+            // 
+            // btnCopyAllTags
+            // 
+            this.btnCopyAllTags.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.btnCopyAllTags.BackColor = System.Drawing.Color.Transparent;
+            this.btnCopyAllTags.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCopyAllTags.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.btnCopyAllTags.Location = new System.Drawing.Point(6, 90);
+            this.btnCopyAllTags.Name = "btnCopyAllTags";
+            this.btnCopyAllTags.Size = new System.Drawing.Size(121, 23);
+            this.btnCopyAllTags.TabIndex = 23;
+            this.btnCopyAllTags.Text = "Copy All Tags";
+            this.btnCopyAllTags.UseVisualStyleBackColor = false;
+            this.btnCopyAllTags.Click += new System.EventHandler(this.btnCopyAllTags_Click);
+            // 
+            // btnPurge
+            // 
+            this.btnPurge.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.btnPurge.BackColor = System.Drawing.Color.Transparent;
+            this.btnPurge.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPurge.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.btnPurge.Location = new System.Drawing.Point(6, 61);
+            this.btnPurge.Name = "btnPurge";
+            this.btnPurge.Size = new System.Drawing.Size(121, 23);
+            this.btnPurge.TabIndex = 22;
+            this.btnPurge.Text = "Purge Deleted";
+            this.btnPurge.UseVisualStyleBackColor = false;
+            this.btnPurge.Click += new System.EventHandler(this.btnPurge_Click);
             // 
             // lblScrollSpeed
             // 
@@ -552,7 +583,7 @@
             this.btnCollapseSidePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(103)))), ((int)(((byte)(106)))), ((int)(((byte)(109)))));
             this.btnCollapseSidePanel.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnCollapseSidePanel.ForeColor = System.Drawing.Color.White;
-            this.btnCollapseSidePanel.Location = new System.Drawing.Point(140, 691);
+            this.btnCollapseSidePanel.Location = new System.Drawing.Point(140, 710);
             this.btnCollapseSidePanel.Name = "btnCollapseSidePanel";
             this.btnCollapseSidePanel.Size = new System.Drawing.Size(19, 42);
             this.btnCollapseSidePanel.TabIndex = 3;
@@ -571,7 +602,7 @@
             this.pnlRight.Controls.Add(this.cmbTagDrag_1);
             this.pnlRight.Location = new System.Drawing.Point(1077, 0);
             this.pnlRight.Name = "pnlRight";
-            this.pnlRight.Size = new System.Drawing.Size(141, 733);
+            this.pnlRight.Size = new System.Drawing.Size(141, 752);
             this.pnlRight.TabIndex = 4;
             this.pnlRight.Visible = false;
             // 
@@ -614,27 +645,13 @@
             this.cmbTagDrag_1.DragDrop += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragDrop);
             this.cmbTagDrag_1.DragEnter += new System.Windows.Forms.DragEventHandler(this.cmbTagDrag_DragEnter);
             // 
-            // btnPurge
-            // 
-            this.btnPurge.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.btnPurge.BackColor = System.Drawing.Color.Transparent;
-            this.btnPurge.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnPurge.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.btnPurge.Location = new System.Drawing.Point(6, 61);
-            this.btnPurge.Name = "btnPurge";
-            this.btnPurge.Size = new System.Drawing.Size(121, 23);
-            this.btnPurge.TabIndex = 22;
-            this.btnPurge.Text = "Purge Deleted";
-            this.btnPurge.UseVisualStyleBackColor = false;
-            this.btnPurge.Click += new System.EventHandler(this.btnPurge_Click);
-            // 
             // frmImageTaggerMain
             // 
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(214)))), ((int)(((byte)(222)))), ((int)(((byte)(212)))));
-            this.ClientSize = new System.Drawing.Size(1216, 733);
+            this.ClientSize = new System.Drawing.Size(1216, 752);
             this.Controls.Add(this.pnlRight);
             this.Controls.Add(this.btnCollapseSidePanel);
             this.Controls.Add(this.pnlLeft);
@@ -718,6 +735,7 @@
         private System.Windows.Forms.Panel pnlTagsHeader;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button btnPurge;
+        private System.Windows.Forms.Button btnCopyAllTags;
     }
 }
 
